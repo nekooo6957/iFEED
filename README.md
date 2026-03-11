@@ -18,3 +18,20 @@ View your app in AI Studio: https://ai.studio/apps/7bcba9b1-17ea-4463-96c1-0f5b4
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Share With Friends (GitHub Pages)
+
+Project page URL:
+`https://nekooo6957.github.io/iFEED/`
+
+This repo now includes a Pages workflow:
+`/.github/workflows/deploy-pages.yml`
+
+After pushing to `main`, GitHub Actions will:
+1. Build with `npm run build:pages`
+2. Publish `dist` to GitHub Pages
+
+If the page still does not load:
+1. Open repo `Settings > Pages`
+2. Ensure `Source` is `GitHub Actions`
+3. Wait for the `Deploy To GitHub Pages` workflow to finish
