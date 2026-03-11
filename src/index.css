@@ -2,11 +2,18 @@
 @import "tailwindcss";
 
 :root {
-  --game-bg-1: #fff2cf;
-  --game-bg-2: #f1d39c;
-  --game-ink: #1f1f1f;
-  --game-card: #fffaf0;
-  --game-accent: #ff8a34;
+  --game-bg: #f6edd8;
+  --game-bg-soft: #fcf5e6;
+  --game-ink: #261a12;
+  --game-ink-soft: #6f5542;
+  --game-accent: #ff8b3e;
+  --game-accent-strong: #f97316;
+  --game-line: #2c1d14;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 22px;
+  --shadow-card: 0 10px 24px rgba(63, 42, 24, 0.16);
+  --shadow-press: 0 4px 10px rgba(35, 22, 13, 0.18);
 }
 
 html,
@@ -15,35 +22,48 @@ body,
   height: 100%;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   color: var(--game-ink);
   font-family: "Baloo 2", "Noto Sans SC", "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
-  background: #f5ebd4;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.42), transparent 28%),
+    linear-gradient(180deg, #f8f0dd 0%, #eedcbd 100%);
 }
 
 .title-font {
   font-family: "Luckiest Guy", "Noto Sans SC", sans-serif;
-  letter-spacing: 0.5px;
-}
-
-.game-card {
-  background: var(--game-card);
-  border: 2px solid #111;
-  border-radius: 20px;
-  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.35);
+  letter-spacing: 0.45px;
 }
 
 .game-pill-btn {
-  border: 2px solid #111;
+  border: 1px solid rgba(44, 29, 20, 0.28);
   border-radius: 999px;
   font-weight: 800;
-  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-press);
   transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
 }
 
 .game-pill-btn:active {
-  transform: translateY(2px);
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+  transform: translateY(1px);
+  box-shadow: 0 3px 8px rgba(35, 22, 13, 0.2);
+}
+
+button:focus-visible,
+select:focus-visible {
+  outline: 3px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+@media (max-width: 380px) {
+  body {
+    font-size: 14px;
+  }
 }

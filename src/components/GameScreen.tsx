@@ -359,7 +359,7 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
     const dy = Math.max(0, currentY - startPosRef.current.y);
     setDragOffset({ x: dx, y: dy });
 
-    const maxDrag = 150;
+    const maxDrag = 120;
     const percent = Math.min((dy / maxDrag) * 100, 100);
     setChargePercent(percent);
   };
@@ -390,7 +390,7 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
     const targetPxY = spawnPxY + throwVecY;
 
     const foodType = currentFood;
-    const charge = Math.min((dragOffset.y / 150) * 100, 100);
+    const charge = Math.min((dragOffset.y / 120) * 100, 100);
     const newFood: FlyingFood = {
       id: uid(),
       type: foodType,
@@ -575,11 +575,10 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
   return (
     <div
       ref={gameAreaRef}
-      className="relative h-full w-full select-none overflow-hidden touch-none bg-[#f5ebd4] pb-[env(safe-area-inset-bottom)]"
+      className="relative h-full w-full select-none overflow-hidden touch-none bg-gradient-to-b from-[#f8efdc] via-[#f4e5c8] to-[#ecd8b5] pb-[env(safe-area-inset-bottom)]"
     >
-
       <div className="pointer-events-none absolute left-0 right-0 top-0 z-50 flex items-start justify-between gap-2 px-3 pb-2 pt-[calc(0.6rem+env(safe-area-inset-top))] sm:px-4">
-        <div className="game-card min-w-0 flex-1 rounded-xl bg-white/92 px-3 py-2 font-bold backdrop-blur sm:px-4">
+        <div className="min-w-0 flex-1 px-1 py-1 font-bold sm:px-2">
           <div className="flex items-center justify-between text-sm sm:text-base">
             <span className="title-font text-base text-[#3a2612] sm:text-lg">第 {level} 关 / 4</span>
             <span className="text-xs text-gray-700 sm:text-sm">{progressPercent}%</span>
@@ -594,9 +593,9 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
             已消除饥饿值：{clearedHunger}/{totalHunger}
           </div>
         </div>
-        <div className="game-card rounded-xl bg-black/85 px-3 py-2 text-right text-white sm:px-4">
-          <div className="text-sm font-black sm:text-base">剩余食物：{totalFoodCount}</div>
-          <div className="text-xs sm:text-sm">生病动物：{sickCount}</div>
+        <div className="px-1 py-1 text-right text-[#2a1e15] sm:px-2">
+          <div className="text-sm font-black sm:text-base">🍱 {totalFoodCount}</div>
+          <div className="text-xs sm:text-sm">🤒 {sickCount}</div>
         </div>
       </div>
 
@@ -607,7 +606,7 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: -12, opacity: 0, scale: 0.94 }}
             transition={{ duration: 0.28, ease: 'easeOut' }}
-            className="pointer-events-none absolute left-1/2 top-[15%] z-[280] -translate-x-1/2 rounded-full border-2 border-black bg-white/95 px-5 py-2 shadow-[0_4px_0_rgba(0,0,0,0.2)]"
+            className="pointer-events-none absolute left-1/2 top-[15%] z-[280] -translate-x-1/2 rounded-full border border-black/20 bg-white/90 px-5 py-2 shadow-[0_8px_18px_rgba(0,0,0,0.18)]"
           >
             <span className="title-font text-2xl text-[#3b260f]">{levelBanner}</span>
           </motion.div>
@@ -622,17 +621,18 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
             key={animal.id}
             type="button"
             onClick={() => handleAnimalClick(animal)}
+            aria-label={`${config.name}，当前饥饿值${Math.max(0, animal.hungerCurrent)}`}
             className="absolute transition-all duration-200 hover:scale-[1.03] active:scale-95"
             style={getAnimalStyle(animal)}
           >
             <div className="relative flex flex-col items-center">
               <div
-                className={`absolute -top-5 -right-5 h-7 min-w-7 rounded-full border-2 px-2 text-xs font-black shadow-[0_2px_0_rgba(0,0,0,0.2)] ${
+                className={`absolute -top-5 -right-5 h-7 min-w-7 rounded-full border px-2 text-xs font-black shadow-[0_4px_10px_rgba(0,0,0,0.15)] ${
                   animal.status === 'full'
                     ? 'border-green-700 bg-green-200 text-green-900'
                     : animal.status === 'sick'
                       ? 'border-rose-700 bg-rose-200 text-rose-900'
-                      : 'border-black bg-yellow-200 text-black'
+                      : 'border-black/30 bg-yellow-200 text-black'
                 }`}
               >
                 {animal.status === 'full' ? '饱' : animal.hungerCurrent}
@@ -721,7 +721,7 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
             animate={{ opacity: 0, y: -24, scale: 1.1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 1 }}
-            className="pointer-events-none absolute z-[300] whitespace-nowrap rounded-full border-2 border-black/60 bg-white/95 px-3 py-1 text-sm font-black text-[#2f2012] shadow-[0_3px_0_rgba(0,0,0,0.18)]"
+            className="pointer-events-none absolute z-[300] whitespace-nowrap rounded-full border border-black/20 bg-white/92 px-3 py-1 text-sm font-black text-[#2f2012] shadow-[0_8px_18px_rgba(0,0,0,0.15)]"
             style={{ left: `${feedback.x}%`, bottom: `${feedback.y}%`, transform: 'translate(-50%, 0)' }}
           >
             {feedback.text}
@@ -729,8 +729,8 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
         )}
       </AnimatePresence>
 
-      <div className="absolute bottom-0 left-0 right-0 z-[120] grid grid-cols-[1fr_auto_1fr] items-end gap-2 bg-gradient-to-t from-black/20 to-transparent px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-3 sm:gap-3 sm:px-4 sm:pb-4">
-        <div className="game-card rounded-2xl bg-white/92 p-2.5 sm:p-3">
+      <div className="absolute bottom-[calc(5rem+env(safe-area-inset-bottom))] left-0 right-0 z-[120] grid grid-cols-[1.05fr_auto_0.95fr] items-end gap-2 px-2 pt-3 sm:bottom-12 sm:gap-3 sm:px-4">
+        <div className="p-1.5 sm:p-2">
           <div className="mb-2 text-sm font-black">食物库存</div>
           <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
             {unlockedFoods.map((food) => {
@@ -741,9 +741,10 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
                   key={food}
                   type="button"
                   onClick={() => setCurrentFood(food)}
-                  className={`min-h-[54px] rounded-xl border-2 px-1 py-1 text-center transition sm:min-h-[60px] sm:px-2 sm:py-2 ${
-                    isSelected ? 'border-cyan-500 bg-cyan-50' : 'border-black bg-white'
-                  } ${count <= 0 ? 'opacity-40' : ''}`}
+                  aria-label={`${FOODS[food].name}，剩余${count}`}
+                  className={`min-h-[54px] rounded-xl border px-1 py-1 text-center transition sm:min-h-[60px] sm:px-2 sm:py-2 ${
+                    isSelected ? 'border-cyan-500 bg-cyan-50 shadow-[0_4px_12px_rgba(14,165,233,0.28)]' : 'border-black/15 bg-white/90'
+                  } ${count <= 0 ? 'opacity-40 grayscale-[0.2]' : ''}`}
                 >
                   <div className="text-xl sm:text-2xl">{FOODS[food].emoji}</div>
                   <div className="text-xs font-bold">{count}</div>
@@ -753,7 +754,7 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-2 px-1 py-1.5">
           {isCharging && (
             <div className="w-28 overflow-hidden rounded-full border border-black bg-gray-200">
               <div className="h-2 bg-orange-500" style={{ width: `${chargePercent}%` }} />
@@ -765,7 +766,8 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
-            className="relative mb-1 h-32 w-32 cursor-grab border-0 bg-transparent p-0 active:cursor-grabbing sm:mb-2 sm:h-36 sm:w-36"
+            aria-label={`当前食物${FOODS[currentFood].name}，按住下拉后抛投`}
+            className="relative mb-1 h-28 w-28 cursor-grab border-0 bg-transparent p-0 active:cursor-grabbing sm:mb-2 sm:h-32 sm:w-32"
           >
             <motion.div
               className="absolute inset-0 flex items-center justify-center origin-bottom"
@@ -776,7 +778,7 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
                 transition: isCharging ? 'none' : 'all 0.2s ease-out',
               }}
             >
-              <svg width="112" height="112" viewBox="0 0 100 100" className="drop-shadow-xl sm:h-[120px] sm:w-[120px]">
+              <svg width="102" height="102" viewBox="0 0 100 100" className="drop-shadow-xl sm:h-[112px] sm:w-[112px]">
                 <path
                   d="M30,100 L30,60 Q30,30 50,30 Q70,30 70,60 L70,100 Z"
                   fill="#FFCCAA"
@@ -794,7 +796,7 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
                 <path d="M60,30 L60,60" stroke="black" strokeWidth="2" opacity="0.3" />
               </svg>
 
-              <div className="pointer-events-none absolute top-[40%] text-4xl sm:text-5xl">
+              <div className="pointer-events-none absolute top-[40%] text-3xl sm:text-4xl">
                 {FOODS[currentFood].emoji}
               </div>
 
@@ -805,21 +807,22 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
               )}
             </motion.div>
           </button>
-          <div className="rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-bold text-white sm:px-3 sm:text-xs">
+          <div className="rounded-full bg-[#2a1d14]/85 px-2.5 py-1 text-[11px] font-bold text-white sm:px-3 sm:text-xs">
             向下拖拽蓄力并抛投
           </div>
         </div>
 
-        <div className="game-card rounded-2xl bg-white/92 p-2.5 sm:p-3">
+        <div className="p-1.5 sm:p-2">
           <div className="mb-2 text-sm font-black">道具</div>
           <div className="space-y-2">
             <button
               type="button"
               onClick={() => armTool('cure')}
-              className={`w-full rounded-full border-2 px-2.5 py-2 text-xs font-bold transition sm:px-3 sm:text-sm ${
+              aria-label="选择救治针"
+              className={`game-pill-btn w-full px-2.5 py-2 text-xs font-bold transition sm:px-3 sm:text-sm ${
                 pendingTool === 'cure'
                   ? 'border-cyan-500 bg-cyan-100'
-                  : 'border-black bg-white hover:bg-gray-100'
+                  : 'border-black/20 bg-white/90 hover:bg-white'
               } ${adUsedThisLevel ? 'cursor-not-allowed opacity-50' : ''}`}
               disabled={adUsedThisLevel}
             >
@@ -828,10 +831,11 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
             <button
               type="button"
               onClick={() => armTool('biscuit')}
-              className={`w-full rounded-full border-2 px-2.5 py-2 text-xs font-bold transition sm:px-3 sm:text-sm ${
+              aria-label="选择万能饼干"
+              className={`game-pill-btn w-full px-2.5 py-2 text-xs font-bold transition sm:px-3 sm:text-sm ${
                 pendingTool === 'biscuit'
                   ? 'border-cyan-500 bg-cyan-100'
-                  : 'border-black bg-white hover:bg-gray-100'
+                  : 'border-black/20 bg-white/90 hover:bg-white'
               } ${adUsedThisLevel ? 'cursor-not-allowed opacity-50' : ''}`}
               disabled={adUsedThisLevel}
             >

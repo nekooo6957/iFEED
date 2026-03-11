@@ -35,8 +35,8 @@ export default function App() {
   };
 
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-[#f5ebd4] px-0 sm:px-6">
-      <div className="relative mx-auto h-full w-full max-w-[440px] overflow-hidden bg-[#f5ebd4] sm:my-4 sm:h-[calc(100%-2rem)] sm:rounded-[28px] sm:border-4 sm:border-black/60 sm:shadow-[0_16px_44px_rgba(0,0,0,0.25)]">
+    <div className="relative h-screen w-full overflow-hidden bg-[var(--game-bg)] px-0 sm:px-6">
+      <div className="relative mx-auto h-full w-full max-w-[440px] overflow-hidden bg-[var(--game-bg)] sm:my-4 sm:h-[calc(100%-2rem)] sm:rounded-[30px] sm:border sm:border-black/20 sm:shadow-[0_14px_36px_rgba(0,0,0,0.18)]">
         {phase === 'welcome' && <WelcomeScreen onStart={handleStart} />}
 
         {phase === 'playing' && <GameScreen onGameOver={handleGameOver} onWin={handleWin} />}
