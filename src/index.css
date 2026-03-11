@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Luckiest+Guy&family=Noto+Sans+SC:wght@500;700;900&display=swap');
+@import "tailwindcss";
+
+:root {
+  --game-bg-1: #fff2cf;
+  --game-bg-2: #f1d39c;
+  --game-ink: #1f1f1f;
+  --game-card: #fffaf0;
+  --game-accent: #ff8a34;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--game-ink);
+  font-family: "Baloo 2", "Noto Sans SC", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: #f5ebd4;
+}
+
+.title-font {
+  font-family: "Luckiest Guy", "Noto Sans SC", sans-serif;
+  letter-spacing: 0.5px;
+}
+
+.game-card {
+  background: var(--game-card);
+  border: 2px solid #111;
+  border-radius: 20px;
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.35);
+}
+
+.game-pill-btn {
+  border: 2px solid #111;
+  border-radius: 999px;
+  font-weight: 800;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
+  transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+}
+
+.game-pill-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
