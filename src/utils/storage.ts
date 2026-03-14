@@ -131,10 +131,10 @@ export const consumeFeedCount = (): void => {
   saveDailyData(dailyData);
 };
 
-// 获取剩余投喂次数
+// 获取剩余投喂次数（测试模式：剩余为0时返回100）
 export const getRemainingFeeds = (): number => {
   const dailyData = getDailyData();
-  return dailyData.feedCount;
+  return dailyData.feedCount > 0 ? dailyData.feedCount : 100;
 };
 
 // 使用广告次数
