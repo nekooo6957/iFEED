@@ -237,14 +237,18 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
     const throwVecX = -weightedDx * forceMultiplierX;
     const throwVecY = -dragOffset.y * forceMultiplierY;
 
-    // 起点：手的位置（底部）
-    const startXPct = (spawnPxX / gameRect.width) * 100;
-    const startYPct = ((gameRect.height - spawnPxY) / gameRect.height) * 100;
+    // 起点：手的当前位置（包括拖拽偏移）
+    // 手的视觉位置 = 按钮中心 + 偏移 * 系数
+    const handX = spawnPxX + dragOffset.x * 0.45;
+    const handY = spawnPxY + dragOffset.y * 0.65;
+    const startXPct = (handX / gameRect.width) * 100;
+    const startYPct = ((gameRect.height - handY) / gameRect.height) * 100;
 
-    // 终点：宠物附近（根据拖拽力度决定距离）
-    // 宠物在 top-[35%] = bottom-[65%]，让食物飞向宠物区域
-    const targetXPct = startXPct + (throwVecX / gameRect.width) * 100;
-    const targetYPct = Math.min(65, startYPct + Math.abs((throwVecY / gameRect.height) * 100));
+    // 终点：根据抛投向量计算
+    const targetPxX = spawnPxX + throwVecX;
+    const targetPxY = spawnPxY + throwVecY;
+    const targetXPct = (targetPxX / gameRect.width) * 100;
+    const targetYPct = ((gameRect.height - targetPxY) / gameRect.height) * 100;
 
     const newFood: FlyingFood = {
       id: `food_${Date.now()}_${Math.random().toString(36).slice(2)}`,
