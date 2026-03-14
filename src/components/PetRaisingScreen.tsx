@@ -84,6 +84,21 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
     }
   }, []);
 
+  // 处理飞行动画结束
+  useEffect(() => {
+    flyingFoods.forEach((food) => {
+      const foodId = food.id;
+      if (processedFoodIdsRef.current.has(foodId)) return;
+      processedFoodIdsRef.current.add(foodId);
+
+      setTimeout(() => {
+        handleFeedingSuccess();
+        setFlyingFoods((prev) => prev.filter(item => item.id !== foodId));
+        processedFoodIdsRef.current.delete(foodId);
+      }, food.duration * 1000);
+    });
+  }, [flyingFoods]);
+
   if (!playerData?.chosenPet) {
     return <EmptyPetScreen onBack={onBack} onGoToAdventure={onGoToAdventure} province={playerData?.selectedProvince || '广东'} />;
   }
@@ -258,6 +273,46 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
     setTimeout(() => {
       setFeedbackFoods((prev) => prev.filter(f => f.id !== feedbackId));
     }, 1200);
+  };
+
+  // 投喂成功处理函数
+  const handleFeedingSuccess = () => {
+    if (!playerData?.chosenPet) return;
+
+    const previousStrength = playerData.chosenPet.strength;
+    const newStrength = previousStrength + 5;
+    const animalType = playerData.chosenPet.animalType;
+
+    // 更新强壮度
+    playerData.chosenPet.strength = newStrength;
+    savePlayerData(playerData);
+    setPlayerData({ ...playerData });
+
+    // 显示漂浮反馈
+    showFeedbackFeed('+5 强壮度', 50, 45);
+
+    // 检查形态升级
+    const previousForm = getFormName(previousStrength);
+    const newForm = getFormName(newStrength);
+
+    if (previousForm !== newForm && animalType) {
+      // 形态变化，显示弹窗
+      let title = '';
+      let message = '';
+
+      if (newStrength >= 1000) {
+        title = '🏆 超级无敌！';
+        message = `恭喜！你的${playerData.chosenPet.customName}进化为超级无敌大肌肉形态！\n解锁称号：${playerData.selectedProvince}最强${ANIMALS[animalType].name}！`;
+      } else if (newStrength >= 500) {
+        title = '💪 肌肉发达！';
+        message = `恭喜！你的${playerData.chosenPet.customName}进化为肌肉形态！`;
+      } else if (newStrength >= 100) {
+        title = '✨ 健康匀称！';
+        message = `恭喜！你的${playerData.chosenPet.customName}进化为匀称形态！`;
+      }
+
+      setEvolutionPopup({ show: true, message, title });
+    }
   };
 
   return (
