@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AnimalEntity, FoodType, FOODS, ANIMALS, AnimalType, PlayerData, PetDailyData, ProvinceType } from '../types';
+import { FoodType, FOODS, ANIMALS, PlayerData, PetDailyData, ProvinceType } from '../types';
 import { EmptyPetScreen } from './EmptyPetScreen';
 import {
   getPlayerData,
@@ -15,6 +15,24 @@ import {
   getRemainingAds,
   consumeAdCount
 } from '../utils/storage';
+
+interface FlyingFood {
+  id: string;
+  type: FoodType;
+  startX: number;
+  startY: number;
+  targetX: number;
+  targetY: number;
+  duration: number;
+  charge: number;
+}
+
+interface Feedback {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+}
 
 interface PetRaisingScreenProps {
   onBack: () => void;
@@ -32,6 +50,28 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
     message: '',
     title: ''
   });
+
+  // 弹弓投喂状态
+  const [isCharging, setIsCharging] = useState(false);
+  const [chargePercent, setChargePercent] = useState(0);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [flyingFoods, setFlyingFoods] = useState<FlyingFood[]>([]);
+  const [feedbackFoods, setFeedbackFoods] = useState<Feedback[]>([]);
+  const [currentFood, setCurrentFood] = useState<FoodType>('carrot');
+
+  // 食物列表
+  const FOOD_TYPES: FoodType[] = ['carrot', 'bug', 'bone', 'greens', 'shrimp', 'feed'];
+
+  // Refs
+  const gameAreaRef = useRef<HTMLDivElement>(null);
+  const chargeButtonRef = useRef<HTMLButtonElement>(null);
+  const startPosRef = useRef<{ x: number; y: number } | null>(null);
+  const processedFoodIdsRef = useRef<Set<string>>(new Set());
+
+  // 投喂参数（复用 GameScreen 的值）
+  const maxDragDistance = 120;
+  const forceMultiplierX = 3.0;
+  const forceMultiplierY = 4.8;
 
   useEffect(() => {
     setPlayerData(getPlayerData());
@@ -121,6 +161,103 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
 
   const handleEvolutionPopupClose = () => {
     setEvolutionPopup({ show: false, message: '', title: '' });
+  };
+
+  // 弹弓处理函数
+  const getThrowVector = (dx: number, dy: number) => {
+    const chargeRatio = Math.min(Math.max(dy / maxDragDistance, 0), 1);
+    const weightedDx = dx * chargeRatio;
+    return {
+      throwVecX: -weightedDx * forceMultiplierX,
+      throwVecY: -dy * forceMultiplierY
+    };
+  };
+
+  const handlePointerDown = (e: PointerEvent) => {
+    if (!gameAreaRef.current || !chargeButtonRef.current) return;
+    if (getRemainingFeeds() <= 0) {
+      showFeedbackFeed('请先打卡或看广告获取投喂次数', 50, 20);
+      return;
+    }
+
+    (e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId);
+    const gameRect = gameAreaRef.current.getBoundingClientRect();
+    const buttonRect = chargeButtonRef.current.getBoundingClientRect();
+    startPosRef.current = {
+      x: buttonRect.left + buttonRect.width / 2 - gameRect.left,
+      y: buttonRect.top + buttonRect.height / 2 - gameRect.top
+    };
+    setIsCharging(true);
+  };
+
+  const handlePointerMove = (e: PointerEvent) => {
+    if (!isCharging || !startPosRef.current || !gameAreaRef.current) return;
+    const gameRect = gameAreaRef.current.getBoundingClientRect();
+    const currentX = e.clientX - gameRect.left;
+    const currentY = e.clientY - gameRect.top;
+    const dx = currentX - startPosRef.current.x;
+    const dy = Math.max(0, currentY - startPosRef.current.y);
+    setDragOffset({ x: dx, y: dy });
+
+    const percent = Math.min((dy / maxDragDistance) * 100, 100);
+    setChargePercent(percent);
+  };
+
+  const handlePointerUp = (e: PointerEvent) => {
+    if (!isCharging || !startPosRef.current || !gameAreaRef.current) {
+      resetDrag();
+      return;
+    }
+
+    (e.currentTarget as HTMLButtonElement).releasePointerCapture(e.pointerId);
+
+    if (getRemainingFeeds() <= 0) {
+      showFeedbackFeed('请先打卡或看广告获取投喂次数', 50, 20);
+      resetDrag();
+      return;
+    }
+
+    const gameRect = gameAreaRef.current.getBoundingClientRect();
+    const spawnPxX = startPosRef.current.x;
+    const spawnPxY = startPosRef.current.y;
+    const { throwVecX, throwVecY } = getThrowVector(dragOffset.x, dragOffset.y);
+
+    const targetPxX = spawnPxX + throwVecX;
+    const targetPxY = spawnPxY + throwVecY;
+
+    const newFood: FlyingFood = {
+      id: `food_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      type: currentFood,
+      startX: (spawnPxX / gameRect.width) * 100,
+      startY: ((gameRect.height - spawnPxY) / gameRect.height) * 100,
+      targetX: (targetPxX / gameRect.width) * 100,
+      targetY: ((gameRect.height - targetPxY) / gameRect.height) * 100,
+      duration: 0.8,
+      charge: Math.min((dragOffset.y / maxDragDistance) * 100, 100)
+    };
+
+    setFlyingFoods((prev) => [...prev, newFood]);
+
+    consumeFeedCount();
+    setDailyData(getDailyData());
+
+    resetDrag();
+  };
+
+  const resetDrag = () => {
+    setIsCharging(false);
+    setChargePercent(0);
+    setDragOffset({ x: 0, y: 0 });
+    startPosRef.current = null;
+  };
+
+  const showFeedbackFeed = (text: string, x: number, y: number) => {
+    const feedbackId = `feedback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    setFeedbackFoods((prev) => [...prev, { id: feedbackId, text, x, y }]);
+
+    setTimeout(() => {
+      setFeedbackFoods((prev) => prev.filter(f => f.id !== feedbackId));
+    }, 1200);
   };
 
   return (
@@ -235,6 +372,143 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
           </div>
         </motion.div>
       </div>
+
+      {/* 弹弓投喂区域 - 底部中央 */}
+      <div
+        ref={gameAreaRef}
+        className="absolute bottom-0 left-0 right-0 flex items-center justify-center pb-[calc(5rem+env(safe-area-inset-bottom))]"
+      >
+        {/* 食物选择器 */}
+        <div className="absolute bottom-32 left-4 z-[110]">
+          <div className="mb-2 text-sm font-bold text-[#3a2612]">选择食物</div>
+          <div className="flex gap-2">
+            {FOOD_TYPES.map((food) => (
+              <button
+                key={food}
+                onClick={() => setCurrentFood(food)}
+                className={`rounded-xl px-3 py-2 text-center transition ${
+                  currentFood === food
+                    ? 'bg-cyan-500 border-2 border-cyan-600 text-white'
+                    : 'bg-white/80 border-2 border-gray-300 hover:bg-white'
+                }`}
+              >
+                <div className="text-2xl">{FOODS[food].emoji}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 蓄力条 */}
+        {isCharging && (
+          <div className="absolute bottom-28 w-48 overflow-hidden rounded-full border-2 border-black/20 bg-gray-200">
+            <div
+              className="h-3 bg-gradient-to-r from-orange-400 to-red-400 transition-all duration-75"
+              style={{ width: `${chargePercent}%` }}
+            />
+          </div>
+        )}
+
+        {/* 弹弓按钮 */}
+        <button
+          ref={chargeButtonRef}
+          type="button"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          className="relative mb-1 h-28 w-28 cursor-grab border-0 bg-transparent p-0 active:cursor-grabbing"
+          aria-label={`投喂 ${FOODS[currentFood].name}`}
+        >
+          <motion.div
+            className="absolute inset-0 flex items-center justify-center origin-bottom"
+            animate={{
+              x: isCharging ? dragOffset.x * 0.45 : 0,
+              y: isCharging ? dragOffset.y * 0.65 : 0,
+              rotate: isCharging ? (Math.atan2(dragOffset.x, -dragOffset.y) * 180 / Math.PI) : 0
+            }}
+            transition={{ type: 'spring', duration: 0.05 }}
+          >
+            {/* 复用 GameScreen 的 SVG hand */}
+            <svg width="90" height="90" viewBox="0 0 100 100" className="drop-shadow-xl">
+              <path
+                d="M30,100 L30,60 Q30,30 50,30 Q70,30 70,60 L70,100 Z"
+                fill="#FFCCAA"
+                stroke="black"
+                strokeWidth="3"
+              />
+              <path
+                d="M70,70 Q90,70 90,50 Q90,30 70,40"
+                fillOpacity="0"
+                stroke="black"
+                strokeWidth="3"
+              />
+              <path d="M40,30 L40,60" stroke="black" strokeWidth="2" opacity="0.3" />
+              <path d="M50,30 L50,60" stroke="black" strokeWidth="2" opacity="0.3" />
+              <path d="M60,30 L60,60" stroke="black" strokeWidth="2" opacity="0.3" />
+            </svg>
+
+            <div className="pointer-events-none absolute top-[35%] text-2xl">
+              {FOODS[currentFood].emoji}
+            </div>
+          </motion.div>
+        </button>
+
+        <div className="rounded-full bg-[#2a1d14]/85 px-2 py-1 text-[10px] font-bold text-white">
+          向下拖动蓄力投喂
+        </div>
+      </div>
+
+      {/* 飞行的食物 */}
+      <AnimatePresence>
+        {flyingFoods.map((food) => (
+          <div key={food.id} className="pointer-events-none absolute inset-0 z-[200]">
+            <motion.div
+              initial={{
+                left: `${food.startX}%`,
+                bottom: `${food.startY}%`,
+                scale: 0.5,
+                opacity: 0.8
+              }}
+              animate={{
+                left: `${food.targetX}%`,
+                bottom: `${food.targetY}%`,
+                scale: [0.5, 1.2, 0.5],
+                rotate: 360 * (1 + food.charge / 20)
+              }}
+              transition={{
+                left: { duration: food.duration, ease: 'linear' },
+                bottom: { duration: food.duration, ease: 'linear' },
+                scale: { duration: food.duration, ease: 'easeInOut', times: [0, 0.5, 1] },
+                rotate: { duration: food.duration, ease: 'linear' }
+              }}
+              className="absolute flex items-center justify-center"
+              style={{ transform: 'translate(-50%, 50%)' }}
+            >
+              <div className="text-4xl">{FOODS[food.type].emoji}</div>
+            </motion.div>
+          </div>
+        ))}
+      </AnimatePresence>
+
+      {/* 漂浮反馈 */}
+      <AnimatePresence>
+        {feedbackFoods.map((feedback) => (
+          <motion.div
+            key={feedback.id}
+            initial={{ opacity: 1, y: 0, scale: 0.8 }}
+            animate={{ opacity: 0, y: -24, scale: 1.1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1 }}
+            className="pointer-events-none absolute z-[300] whitespace-nowrap rounded-full border-2 border-black/20 bg-white/92 px-4 py-2 text-sm font-bold text-[#2f2012] shadow-[0_8px_18px_rgba(0,0,0,0.15)]"
+            style={{
+              left: `${feedback.x}%`,
+              bottom: `${feedback.y}%`,
+              transform: 'translate(-50%, 0)'
+            }}
+          >
+            {feedback.text}
+          </motion.div>
+        ))}
+      </AnimatePresence>
 
       {/* 底部栏 */}
       <div className="absolute bottom-0 left-0 right-0 z-[120] flex items-end justify-between gap-2 border-t-2 border-black/10 bg-gradient-to-t from-white/95 to-white/90 px-4 pb-[env(safe-area-inset-bottom)] pt-4">
