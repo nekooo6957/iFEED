@@ -130,7 +130,8 @@ export const LEVEL_CONFIG: LevelConfig[] = [
     animalCount: 1,
     gridSize: 1,
     fixedPositions: [{ x: 50, y: 58 }],
-    animalPool: ['rabbit'],
+    // L1 仅解锁胡萝卜/青菜，因此池子限制为可被这两种食物喂养的动物
+    animalPool: ['rabbit', 'sheep'],
     unlockedFoods: ['carrot', 'greens'],
     hungerRange: [1, 1],
     surplusRatio: 0.5,
@@ -146,7 +147,8 @@ export const LEVEL_CONFIG: LevelConfig[] = [
       { x: 50, y: 60 },
       { x: 50, y: 80 },
     ],
-    animalPool: ['rabbit', 'sheep', 'chicken'],
+    // L2 食物为胡萝卜/青菜/虫子/饲料，池子仅包含可被这些食物喂养的动物
+    animalPool: ['rabbit', 'sheep', 'chicken', 'frog', 'turtle', 'fish'],
     unlockedFoods: ['carrot', 'greens', 'bug', 'feed'],
     hungerRange: [1, 2],
     surplusRatio: 0.3,
@@ -180,3 +182,41 @@ export const MAX_LEVEL = 4;
 
 export const ALL_FOODS = Object.keys(FOODS) as FoodType[];
 export const ALL_ANIMALS = Object.keys(ANIMALS) as AnimalType[];
+
+// 玩家基础数据
+export interface PlayerData {
+  playerId: string;
+  selectedProvince: string;
+  chosenPet: {
+    animalType: AnimalType | null;
+    feedCount: number;
+    strength: number;
+    customName: string;
+  } | null;
+}
+
+// 养成系统每日数据
+export interface PetDailyData {
+  date: string;
+  checkedIn: boolean;
+  feedCount: number;
+  adCount: number;
+}
+
+// 排名模拟数据
+export interface RankingData {
+  rank: number;
+  petName: string;
+  province: string;
+  strength: number;
+}
+
+// 省份列表（新增）
+export const PROVINCES = [
+  '北京', '上海', '广东', '江苏', '浙江', '山东',
+  '河南', '四川', '湖北', '湖南', '福建', '安徽',
+  '河北', '江西', '重庆', '辽宁', '云南', '陕西',
+  '天津', '贵州', '山西', '吉林', '广西', '新疆'
+] as const;
+
+export type ProvinceType = typeof PROVINCES[number];
