@@ -230,18 +230,30 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
     const spawnPxX = startPosRef.current.x;
     const spawnPxY = startPosRef.current.y;
 
-    // 宠物在屏幕中间偏上位置，目标设置为宠物附近
-    // 宠物位置：top-[35%] = bottom-[35%]
-    const targetBottomPct = 35 + (Math.random() * 15 - 7); // 35-50% 之间的随机位置，带一点横向偏移
+    // 计算抛投向量（与 GameScreen 相同的逻辑）
+    const chargeRatio = Math.min(Math.max(dragOffset.y / maxDragDistance, 0), 1);
+    const stableDx = Math.abs(dragOffset.x) <= xDeadZonePx ? 0 : dragOffset.x;
+    const weightedDx = stableDx * chargeRatio;
+    const throwVecX = -weightedDx * forceMultiplierX;
+    const throwVecY = -dragOffset.y * forceMultiplierY;
+
+    // 起点：手的位置（底部）
+    const startXPct = (spawnPxX / gameRect.width) * 100;
+    const startYPct = ((gameRect.height - spawnPxY) / gameRect.height) * 100;
+
+    // 终点：宠物附近（根据拖拽力度决定距离）
+    // 宠物在 top-[35%] = bottom-[65%]，让食物飞向宠物区域
+    const targetXPct = startXPct + (throwVecX / gameRect.width) * 100;
+    const targetYPct = Math.min(65, startYPct + Math.abs((throwVecY / gameRect.height) * 100));
 
     const newFood: FlyingFood = {
       id: `food_${Date.now()}_${Math.random().toString(36).slice(2)}`,
       type: currentFood,
-      startX: 50, // 从屏幕中心开始
-      startY: 55, // 从屏幕上方开始
-      targetX: 50 + (Math.random() * 30 - 15), // 宠物附近的随机目标位置
-      targetY: targetBottomPct,
-      duration: 0.6, // 飞行时间稍短
+      startX: startXPct,
+      startY: startYPct,
+      targetX: targetXPct,
+      targetY: targetYPct,
+      duration: 0.8,
       charge: Math.min((dragOffset.y / maxDragDistance) * 100, 100)
     };
 
