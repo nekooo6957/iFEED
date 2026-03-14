@@ -85,7 +85,7 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
     }
   }, []);
 
-  // 处理飞行动画结束（直接命中宠物）
+  // 处理飞行动画结束（检测是否命中宠物）
   useEffect(() => {
     flyingFoods.forEach((food) => {
       const foodId = food.id;
@@ -93,7 +93,25 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
       processedFoodIdsRef.current.add(foodId);
 
       setTimeout(() => {
-        handleFeedingSuccess();
+        // 检测是否命中宠物（宠物在屏幕中央，bottom 约 65%）
+        const petX = 50; // 宠物在屏幕中央
+        const petY = 65; // 宠物在 top-[35%] = bottom-[65%]
+        const hitRadius = 15; // 命中半径
+
+        const dx = food.targetX - petX;
+        const dy = food.targetY - petY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance <= hitRadius) {
+          handleFeedingSuccess();
+        } else if (food.targetY > 80) {
+          showFeedbackFeed('飞过头了', food.targetX, food.targetY);
+        } else if (food.targetY < 50) {
+          showFeedbackFeed('太近了', food.targetX, food.targetY);
+        } else {
+          showFeedbackFeed('未命中', food.targetX, food.targetY);
+        }
+
         setFlyingFoods((prev) => prev.filter(item => item.id !== foodId));
         processedFoodIdsRef.current.delete(foodId);
       }, food.duration * 1000);
@@ -244,11 +262,15 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
     const startXPct = (handX / gameRect.width) * 100;
     const startYPct = ((gameRect.height - handY) / gameRect.height) * 100;
 
-    // 终点：根据抛投向量计算
+    // 终点：根据抛投向量计算，但限制在合理范围内
     const targetPxX = spawnPxX + throwVecX;
     const targetPxY = spawnPxY + throwVecY;
-    const targetXPct = (targetPxX / gameRect.width) * 100;
-    const targetYPct = ((gameRect.height - targetPxY) / gameRect.height) * 100;
+    let targetXPct = (targetPxX / gameRect.width) * 100;
+    let targetYPct = ((gameRect.height - targetPxY) / gameRect.height) * 100;
+
+    // 限制目标位置在屏幕范围内（宠物区域：X 20-80%，Y 50-75%）
+    targetXPct = Math.max(20, Math.min(80, targetXPct));
+    targetYPct = Math.max(50, Math.min(75, targetYPct));
 
     const newFood: FlyingFood = {
       id: `food_${Date.now()}_${Math.random().toString(36).slice(2)}`,
@@ -567,30 +589,39 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
       <AnimatePresence>
         {flyingFoods.map((food) => (
           <div key={food.id} className="pointer-events-none absolute inset-0 z-[200]">
-            <motion.div
-              initial={{
-                left: `${food.startX}%`,
-                bottom: `${food.startY}%`,
-                scale: 0.5,
-                opacity: 0.8
-              }}
-              animate={{
-                left: `${food.targetX}%`,
-                bottom: `${food.targetY}%`,
-                scale: [0.5, 1.2, 0.5],
-                rotate: 360 * (1 + food.charge / 20)
-              }}
-              transition={{
-                left: { duration: food.duration, ease: 'linear' },
-                bottom: { duration: food.duration, ease: 'linear' },
-                scale: { duration: food.duration, ease: 'easeInOut', times: [0, 0.5, 1] },
-                rotate: { duration: food.duration, ease: 'linear' }
-              }}
-              className="absolute flex h-12 w-12 items-center justify-center"
-              style={{ transform: 'translate(-50%, 50%)' }}
-            >
-              <div className="text-4xl">{FOODS[food.type].emoji}</div>
-            </motion.div>
+            {(() => {
+              const edgeScale = 0.8;
+              const peakScale = 1.0 + food.charge / 200;
+
+              return (
+                <>
+                  <motion.div
+                    initial={{
+                      left: `${food.startX}%`,
+                      bottom: `${food.startY}%`,
+                      scale: edgeScale,
+                      opacity: 0.8
+                    }}
+                    animate={{
+                      left: `${food.targetX}%`,
+                      bottom: `${food.targetY}%`,
+                      scale: [edgeScale, peakScale, edgeScale],
+                      rotate: 360 * (1 + food.charge / 20)
+                    }}
+                    transition={{
+                      left: { duration: food.duration, ease: 'linear' },
+                      bottom: { duration: food.duration, ease: 'linear' },
+                      scale: { duration: food.duration, ease: 'easeInOut', times: [0, 0.5, 1] },
+                      rotate: { duration: food.duration, ease: 'linear' }
+                    }}
+                    className="absolute flex h-12 w-12 items-center justify-center"
+                    style={{ transform: 'translate(-50%, 50%)' }}
+                  >
+                    <div className="text-4xl">{FOODS[food.type].emoji}</div>
+                  </motion.div>
+                </>
+              );
+            })()}
           </div>
         ))}
       </AnimatePresence>
