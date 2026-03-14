@@ -370,7 +370,7 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
       </div>
 
       {/* 天选宠物 */}
-      <div className="absolute left-1/2 top-[40%] z-[50] -translate-x-1/2 flex flex-col items-center">
+      <div className="absolute left-1/2 top-[40%] z-[80] -translate-x-1/2 flex flex-col items-center">
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -431,10 +431,10 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
       {/* 弹弓投喂区域 - 底部中央 */}
       <div
         ref={gameAreaRef}
-        className="absolute bottom-0 left-0 right-0 flex items-center justify-center pb-[calc(5rem+env(safe-area-inset-bottom))]"
+        className="absolute bottom-0 left-0 right-0 z-[140] flex items-center justify-center pb-[calc(5rem+env(safe-area-inset-bottom))]"
       >
         {/* 食物选择器 */}
-        <div className="absolute bottom-32 left-4 z-[110]">
+        <div className="absolute bottom-32 left-4 z-[130]">
           <div className="mb-2 text-sm font-bold text-[#3a2612]">选择食物</div>
           <div className="flex gap-2">
             {FOOD_TYPES.map((food) => (
@@ -470,7 +470,7 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          className="relative mb-1 h-28 w-28 cursor-grab border-0 bg-transparent p-0 active:cursor-grabbing"
+          className="relative z-[150] mb-1 h-28 w-28 cursor-grab border-0 bg-transparent p-0 active:cursor-grabbing"
           aria-label={`投喂 ${FOODS[currentFood].name}`}
         >
           <motion.div
@@ -566,7 +566,7 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
       </AnimatePresence>
 
       {/* 底部栏 */}
-      <div className="absolute bottom-0 left-0 right-0 z-[120] flex items-end justify-between gap-2 border-t-2 border-black/10 bg-gradient-to-t from-white/95 to-white/90 px-4 pb-[env(safe-area-inset-bottom)] pt-4">
+      <div className="absolute bottom-0 left-0 right-0 z-[160] flex items-end justify-between gap-2 border-t-2 border-black/10 bg-gradient-to-t from-white/95 to-white/90 px-4 pb-[env(safe-area-inset-bottom)] pt-4">
         {/* 打卡按钮 */}
         <button
           onClick={handleCheckIn}
