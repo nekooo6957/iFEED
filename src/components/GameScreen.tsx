@@ -15,6 +15,7 @@ import {
   getLevelConfig,
   hasAnyValidFeedAction,
 } from '../logic/levelGenerator';
+import { getPlayerData, updateAnimalFeedCount, setChosenPet } from '../utils/storage';
 
 const random = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const uid = () => Math.random().toString(36).slice(2, 11);
@@ -84,6 +85,10 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
   const baseHitRadiusPct = 9.8;
   const foodHitRadiusPct = 2.5;
   const visualScaleMultiplier = (gameDimensions.width * (baseHitRadiusPct / 100) * 2) / 60;
+  const maxDragDistance = 120;
+  const xDeadZonePx = 8;
+  const forceMultiplierX = 3.0;
+  const forceMultiplierY = 4.8;
 
   const levelConfig = getLevelConfig(level);
   const unlockedFoods = levelConfig.unlockedFoods;
@@ -276,10 +281,11 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
   }, [currentFood, foodInventory, unlockedFoods]);
 
   useEffect(() => {
-    if (!animals.length || levelTransitioningRef.current || gameEndedRef.current) return;
+    if (levelTransitioningRef.current || gameEndedRef.current) return;
+    if (totalHunger <= 0) return;
 
-    const allFull = animals.every((animal) => animal.hungerCurrent <= 0);
-    if (!allFull) return;
+    const allCleared = animals.length === 0 || animals.every((animal) => animal.hungerCurrent <= 0);
+    if (!allCleared) return;
 
     levelTransitioningRef.current = true;
     showFeedback('本关完成', 50, 86);
@@ -292,7 +298,7 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
       }
       startLevel(level + 1);
     }, 1000);
-  }, [animals, level]);
+  }, [animals, level, totalHunger]);
 
   useEffect(() => {
     if (!animals.length || levelTransitioningRef.current || gameEndedRef.current) return;
@@ -324,6 +330,24 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
       zIndex,
     };
   };
+
+  const getThrowVector = (dx: number, dy: number) => {
+    const chargeRatio = Math.min(Math.max(dy / maxDragDistance, 0), 1);
+    const stableDx = Math.abs(dx) <= xDeadZonePx ? 0 : dx;
+    // 轻拉时横向影响更小，避免“方向对但明显偏斜”
+    const weightedDx = stableDx * chargeRatio;
+    return {
+      throwVecX: -weightedDx * forceMultiplierX,
+      throwVecY: -dy * forceMultiplierY,
+    };
+  };
+
+  const aimAngleDeg = (() => {
+    if (!isCharging) return 0;
+    const { throwVecX, throwVecY } = getThrowVector(dragOffset.x, dragOffset.y);
+    // 0度表示正上方，与箭头默认朝上保持一致
+    return (Math.atan2(throwVecX, -throwVecY || 0.0001) * 180) / Math.PI;
+  })();
 
   const resetDrag = () => {
     setIsCharging(false);
@@ -359,8 +383,7 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
     const dy = Math.max(0, currentY - startPosRef.current.y);
     setDragOffset({ x: dx, y: dy });
 
-    const maxDrag = 120;
-    const percent = Math.min((dy / maxDrag) * 100, 100);
+    const percent = Math.min((dy / maxDragDistance) * 100, 100);
     setChargePercent(percent);
   };
 
@@ -379,18 +402,16 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
     }
 
     const gameRect = gameAreaRef.current.getBoundingClientRect();
-    const spawnPxX = startPosRef.current.x + dragOffset.x;
-    const spawnPxY = startPosRef.current.y + dragOffset.y;
-
-    const forceMultiplier = 5.0;
-    const throwVecX = -dragOffset.x * forceMultiplier;
-    const throwVecY = -dragOffset.y * forceMultiplier;
+    // 抛投使用固定发射点，避免“手当前位置 + 反向向量”的双重偏移导致歪斜
+    const spawnPxX = startPosRef.current.x;
+    const spawnPxY = startPosRef.current.y;
+    const { throwVecX, throwVecY } = getThrowVector(dragOffset.x, dragOffset.y);
 
     const targetPxX = spawnPxX + throwVecX;
     const targetPxY = spawnPxY + throwVecY;
 
     const foodType = currentFood;
-    const charge = Math.min((dragOffset.y / 120) * 100, 100);
+    const charge = Math.min((dragOffset.y / maxDragDistance) * 100, 100);
     const newFood: FlyingFood = {
       id: uid(),
       type: foodType,
@@ -425,39 +446,64 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
     let feedbackX = 50;
     let feedbackY = 50;
 
-    setAnimals((prev) =>
-      prev.map((animal) => {
-        if (animal.id !== animalId) return animal;
+    setAnimals((prev) => {
+      const nextAnimals: AnimalEntity[] = [];
+
+      for (const animal of prev) {
+        if (animal.id !== animalId) {
+          nextAnimals.push(animal);
+          continue;
+        }
 
         feedbackX = animal.x;
         feedbackY = animal.y;
 
         if (animal.hungerCurrent <= 0 || animal.status === 'full') {
           feedbackText = `${ANIMALS[animal.type].name}已经吃饱`;
-          return animal;
+          continue;
         }
 
         if (animal.status === 'sick') {
           feedbackText = `${ANIMALS[animal.type].name}生病了，吃不下`;
-          return animal;
+          nextAnimals.push(animal);
+          continue;
         }
 
         const effect = ANIMALS[animal.type].foodEffects[foodType];
         if (!effect) {
           feedbackText = `${ANIMALS[animal.type].name}吃错了，生病`;
-          return { ...animal, status: 'sick' };
+          nextAnimals.push({ ...animal, status: 'sick' });
+          continue;
         }
 
         const nextHunger = Math.max(0, animal.hungerCurrent - effect);
         if (nextHunger <= 0) {
           feedbackText = `${ANIMALS[animal.type].name}吃饱了`;
-          return { ...animal, hungerCurrent: 0, status: 'full' };
+          // 吃饱后直接从场上移除
+          continue;
         }
 
         feedbackText = `${ANIMALS[animal.type].name} -${effect}`;
-        return { ...animal, hungerCurrent: nextHunger, status: 'hungry' };
-      }),
-    );
+        nextAnimals.push({ ...animal, hungerCurrent: nextHunger, status: 'hungry' });
+
+        // 更新动物投喂统计并检查天选宠物
+        updateAnimalFeedCount(animal.type);
+        const playerData = getPlayerData();
+        if (!playerData?.chosenPet) {
+          // 没有天选宠物，检查是否达到100次
+          const allFeedCounts = JSON.parse(localStorage.getItem('animal_feed_counts') || '{}');
+          allFeedCounts[animal.type] = (allFeedCounts[animal.type] || 0) + 1;
+          localStorage.setItem('animal_feed_counts', JSON.stringify(allFeedCounts));
+
+          if (allFeedCounts[animal.type] >= 100) {
+            setChosenPet(animal.type, ANIMALS[animal.type].name);
+            showFeedback('🎉 天选宠物诞生！', 50, 70);
+          }
+        }
+      }
+
+      return nextAnimals;
+    });
 
     showFeedback(feedbackText, feedbackX, feedbackY);
   };
@@ -566,9 +612,8 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
 
     setAdUsedThisLevel(true);
     setPendingTool(null);
-    setAnimals((prev) =>
-      prev.map((item) => (item.id === animal.id ? { ...item, status: 'full', hungerCurrent: 0 } : item)),
-    );
+    setSelectedAnimalId(null);
+    setAnimals((prev) => prev.filter((item) => item.id !== animal.id));
     showFeedback('喂饱成功', animal.x, animal.y);
   };
 
@@ -616,6 +661,7 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
       {animals.map((animal) => {
         const config = ANIMALS[animal.type];
         const isSelected = selectedAnimalId === animal.id;
+        const canEatCurrentFood = Boolean(config.foodEffects[currentFood]) && animal.hungerCurrent > 0;
         return (
           <button
             key={animal.id}
@@ -644,6 +690,16 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
                 </div>
               )}
 
+              {canEatCurrentFood && (
+                <div
+                  className={`absolute -top-10 left-1/2 -translate-x-1/2 rounded-full border border-black/20 bg-white/95 px-1.5 text-sm shadow ${
+                    animal.status === 'sick' ? 'opacity-45' : 'opacity-100'
+                  }`}
+                >
+                  {FOODS[currentFood].emoji}
+                </div>
+              )}
+
               <div
                 className={`text-6xl drop-shadow-lg transition-all ${
                   animal.status === 'full' ? 'opacity-70' : ''
@@ -665,17 +721,24 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
       <AnimatePresence>
         {flyingFoods.map((food) => (
           <div key={food.id} className="pointer-events-none absolute inset-0 z-[200]">
+            {(() => {
+              const baseScale = getVisualScale();
+              const edgeScale = baseScale * 0.72;
+              const peakScale = baseScale * (1.22 + food.charge / 420);
+
+              return (
+                <>
             <motion.div
               initial={{
                 left: `${food.startX}%`,
                 bottom: `${food.startY}%`,
-                scale: getVisualScale(),
+                scale: edgeScale,
                 opacity: 0.5,
               }}
               animate={{
                 left: `${food.targetX}%`,
                 bottom: `${food.targetY}%`,
-                scale: getVisualScale(),
+                scale: edgeScale,
                 opacity: 0.2,
               }}
               transition={{ duration: food.duration, ease: 'linear' }}
@@ -686,29 +749,29 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
               initial={{
                 left: `${food.startX}%`,
                 bottom: `${food.startY}%`,
-                scale: getVisualScale(),
+                scale: edgeScale,
                 rotate: 0,
-                y: 0,
               }}
               animate={{
                 left: `${food.targetX}%`,
                 bottom: `${food.targetY}%`,
-                scale: getVisualScale(),
+                scale: [edgeScale, peakScale, edgeScale],
                 rotate: 360 * (1 + food.charge / 20),
-                y: [0, -130, 0],
               }}
               transition={{
                 left: { duration: food.duration, ease: 'linear' },
                 bottom: { duration: food.duration, ease: 'linear' },
-                scale: { duration: food.duration, ease: 'linear' },
+                scale: { duration: food.duration, ease: 'easeInOut', times: [0, 0.5, 1] },
                 rotate: { duration: food.duration, ease: 'linear' },
-                y: { duration: food.duration, ease: 'easeInOut', times: [0, 0.5, 1] },
               }}
               className="absolute flex h-12 w-12 items-center justify-center text-4xl"
               style={{ transform: 'translate(-50%, 50%)' }}
             >
               {FOODS[food.type].emoji}
             </motion.div>
+                </>
+              );
+            })()}
           </div>
         ))}
       </AnimatePresence>
@@ -772,9 +835,9 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
             <motion.div
               className="absolute inset-0 flex items-center justify-center origin-bottom"
               style={{
-                x: isCharging ? dragOffset.x : 0,
-                y: isCharging ? dragOffset.y : 0,
-                rotate: isCharging ? -dragOffset.x * 0.5 : 0,
+                x: isCharging ? dragOffset.x * 0.45 : 0,
+                y: isCharging ? dragOffset.y * 0.65 : 0,
+                rotate: isCharging ? aimAngleDeg : 0,
                 transition: isCharging ? 'none' : 'all 0.2s ease-out',
               }}
             >
