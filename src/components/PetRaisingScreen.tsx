@@ -432,100 +432,121 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
       {/* 底部投喂控制区 */}
       <div
         ref={gameAreaRef}
-        className="absolute bottom-0 left-0 right-0 z-[140] pb-[env(safe-area-inset-bottom)]"
+        className="absolute bottom-0 left-0 right-0 z-[140] grid grid-cols-[1fr_auto_1fr] items-end gap-2 px-2 pt-3 pb-[env(safe-area-inset-bottom)] sm:gap-3 sm:px-4 sm:pb-4"
       >
-        {/* 底部控制面板 */}
-        <div className="flex items-end justify-between gap-3 px-4 pt-3 pb-4 sm:gap-4 sm:px-6 sm:pb-6">
-          {/* 左侧：食物选择器 */}
-          <div className="flex flex-col gap-2">
-            <div className="text-sm font-bold text-[#3a2612]">选择食物</div>
-            <div className="flex gap-2">
-              {FOOD_TYPES.map((food) => (
-                <button
-                  key={food}
-                  onClick={() => setCurrentFood(food)}
-                  className={`rounded-lg px-2 py-2 text-center transition sm:px-3 ${
-                    currentFood === food
-                      ? 'bg-cyan-500 border-2 border-cyan-600 text-white'
-                      : 'bg-white/90 border-2 border-gray-300 hover:bg-white'
-                  }`}
-                >
-                  <div className="text-xl sm:text-2xl">{FOODS[food].emoji}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 中间：弹弓按钮 */}
-          <div className="flex flex-col items-center">
-            {/* 蓄力条 */}
-            {isCharging && (
-              <div className="mb-2 w-32 overflow-hidden rounded-full border border-black/20 bg-gray-200 sm:w-40">
-                <div
-                  className="h-2 bg-gradient-to-r from-orange-400 to-red-400 transition-all duration-75"
-                  style={{ width: `${chargePercent}%` }}
-                />
-              </div>
-            )}
-
-            {/* 弹弓按钮 */}
-            <button
-              ref={chargeButtonRef}
-              type="button"
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              className="relative mb-2 h-24 w-24 cursor-grab border-0 bg-transparent p-0 active:cursor-grabbing sm:h-28 sm:w-28"
-              aria-label={`投喂 ${FOODS[currentFood].name}`}
-            >
-              <motion.div
-                className="absolute inset-0 flex items-center justify-center origin-bottom"
-                animate={{
-                  x: isCharging ? dragOffset.x * 0.45 : 0,
-                  y: isCharging ? dragOffset.y * 0.65 : 0,
-                  rotate: isCharging ? (Math.atan2(dragOffset.x, -dragOffset.y) * 180 / Math.PI) : 0
-                }}
-                transition={{ type: 'spring', duration: 0.05 }}
+        {/* 左侧：食物选择器 + 打卡按钮 */}
+        <div className="flex flex-col gap-2">
+          <div className="text-sm font-bold text-[#3a2612]">选择食物</div>
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+            {FOOD_TYPES.map((food) => (
+              <button
+                key={food}
+                onClick={() => setCurrentFood(food)}
+                className={`min-h-[48px] rounded-lg px-1.5 py-1.5 text-center transition sm:min-h-[54px] sm:px-2 sm:py-2 ${
+                  currentFood === food
+                    ? 'bg-cyan-500 border-2 border-cyan-600 text-white'
+                    : 'bg-white/90 border-2 border-gray-300 hover:bg-white'
+                }`}
               >
-                <svg width="90" height="90" viewBox="0 0 100 100" className="drop-shadow-xl sm:h-[102px] sm:w-[102px]">
-                  <path
-                    d="M30,100 L30,60 Q30,30 50,30 Q70,30 70,60 L70,100 Z"
-                    fill="#FFCCAA"
-                    stroke="black"
-                    strokeWidth="3"
-                  />
-                  <path
-                    d="M70,70 Q90,70 90,50 Q90,30 70,40"
-                    fillOpacity="0"
-                    stroke="black"
-                    strokeWidth="3"
-                  />
-                  <path d="M40,30 L40,60" stroke="black" strokeWidth="2" opacity="0.3" />
-                  <path d="M50,30 L50,60" stroke="black" strokeWidth="2" opacity="0.3" />
-                  <path d="M60,30 L60,60" stroke="black" strokeWidth="2" opacity="0.3" />
-                </svg>
-
-                <div className="pointer-events-none absolute top-[40%] text-3xl sm:text-4xl">
-                  {FOODS[currentFood].emoji}
-                </div>
-              </motion.div>
-            </button>
-
-            <div className="rounded-full bg-[#2a1d14]/85 px-2 py-1 text-[10px] font-bold text-white sm:text-xs">
-              向下拖动蓄力投喂
-            </div>
+                <div className="text-lg sm:text-xl">{FOODS[food].emoji}</div>
+              </button>
+            ))}
           </div>
+          <button
+            onClick={handleCheckIn}
+            disabled={dailyData.checkedIn}
+            className={`game-pill-btn w-full px-3 py-2 text-sm font-bold transition ${
+              dailyData.checkedIn
+                ? 'cursor-not-allowed opacity-50 bg-gray-300'
+                : 'bg-gradient-to-r from-emerald-400 to-emerald-500 text-white hover:from-emerald-500 hover:to-emerald-600'
+            }`}
+          >
+            {dailyData.checkedIn ? '✓ 已打卡' : '📋 打卡'}
+          </button>
+        </div>
 
-          {/* 右侧：占位符保持布局平衡 */}
-          <div className="flex flex-col gap-2">
-            <div className="h-5"></div>
-            <div className="text-xs text-gray-500 text-center">
-              <div>剩余投喂</div>
-              <div className="title-font text-lg font-bold text-[#3a2612]">
-                {getRemainingFeeds()}次
+        {/* 中间：弹弓按钮 */}
+        <div className="flex flex-col items-center gap-2">
+          {/* 蓄力条 */}
+          {isCharging && (
+            <div className="w-28 overflow-hidden rounded-full border border-black/20 bg-gray-200 sm:w-32">
+              <div
+                className="h-2 bg-gradient-to-r from-orange-400 to-red-400 transition-all duration-75"
+                style={{ width: `${chargePercent}%` }}
+              />
+            </div>
+          )}
+
+          {/* 弹弓按钮 */}
+          <button
+            ref={chargeButtonRef}
+            type="button"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            className="relative h-28 w-28 cursor-grab border-0 bg-transparent p-0 active:cursor-grabbing sm:h-32 sm:w-32"
+            aria-label={`投喂 ${FOODS[currentFood].name}`}
+          >
+            <motion.div
+              className="absolute inset-0 flex items-center justify-center origin-bottom"
+              animate={{
+                x: isCharging ? dragOffset.x * 0.45 : 0,
+                y: isCharging ? dragOffset.y * 0.65 : 0,
+                rotate: isCharging ? (Math.atan2(dragOffset.x, -dragOffset.y) * 180 / Math.PI) : 0
+              }}
+              transition={{ type: 'spring', duration: 0.05 }}
+            >
+              <svg width="102" height="102" viewBox="0 0 100 100" className="drop-shadow-xl">
+                <path
+                  d="M30,100 L30,60 Q30,30 50,30 Q70,30 70,60 L70,100 Z"
+                  fill="#FFCCAA"
+                  stroke="black"
+                  strokeWidth="3"
+                />
+                <path
+                  d="M70,70 Q90,70 90,50 Q90,30 70,40"
+                  fillOpacity="0"
+                  stroke="black"
+                  strokeWidth="3"
+                />
+                <path d="M40,30 L40,60" stroke="black" strokeWidth="2" opacity="0.3" />
+                <path d="M50,30 L50,60" stroke="black" strokeWidth="2" opacity="0.3" />
+                <path d="M60,30 L60,60" stroke="black" strokeWidth="2" opacity="0.3" />
+              </svg>
+
+              <div className="pointer-events-none absolute top-[40%] text-4xl">
+                {FOODS[currentFood].emoji}
               </div>
+            </motion.div>
+          </button>
+
+          <div className="rounded-full bg-[#2a1d14]/85 px-2.5 py-1 text-[11px] font-bold text-white sm:text-xs">
+            向下拖动蓄力投喂
+          </div>
+        </div>
+
+        {/* 右侧：投喂次数 + 广告按钮 */}
+        <div className="flex flex-col gap-2 items-end">
+          <div className="rounded-lg bg-white/90 px-3 py-2 text-right">
+            <div className="text-xs text-gray-600">今日剩余投喂</div>
+            <div className="title-font text-xl font-bold text-[#3a2612]">
+              {getRemainingFeeds()}次
             </div>
           </div>
+          <button
+            onClick={handleWatchAd}
+            disabled={getRemainingAds() <= 0}
+            className={`ad-button game-pill-btn px-3 py-2 text-xs font-bold transition ${
+              getRemainingAds() <= 0
+                ? 'cursor-not-allowed opacity-50 bg-gray-300'
+                : 'bg-gradient-to-r from-purple-400 to-pink-400 text-white hover:from-purple-500 hover:to-pink-500'
+            }`}
+          >
+            📺 看广告<br />
+            <span className="text-[10px]">
+              今日剩余：{getRemainingAds()}/3
+            </span>
+          </button>
         </div>
       </div>
 
@@ -581,46 +602,6 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
           </motion.div>
         ))}
       </AnimatePresence>
-
-      {/* 底部栏 */}
-      <div className="absolute bottom-0 left-0 right-0 z-[160] flex items-end justify-between gap-2 border-t-2 border-black/10 bg-gradient-to-t from-white/95 to-white/90 px-4 pb-[env(safe-area-inset-bottom)] pt-4">
-        {/* 打卡按钮 */}
-        <button
-          onClick={handleCheckIn}
-          disabled={dailyData.checkedIn}
-          className={`game-pill-btn px-3 py-2 text-sm font-bold transition sm:text-sm ${
-            dailyData.checkedIn
-              ? 'cursor-not-allowed opacity-50 bg-gray-300'
-              : 'bg-gradient-to-r from-emerald-400 to-emerald-500 text-white hover:from-emerald-500 hover:to-emerald-600'
-          }`}
-        >
-          {dailyData.checkedIn ? '✓ 已打卡' : '📋 打卡'}
-        </button>
-
-        {/* 剩余投喂次数 */}
-        <div className="rounded-lg bg-white/80 px-4 py-2">
-          <div className="text-xs text-gray-600">今日剩余投喂</div>
-          <div className="title-font text-xl font-bold text-[#3a2612]">
-            {getRemainingFeeds()}次
-          </div>
-        </div>
-
-        {/* 广告按钮 */}
-        <button
-          onClick={handleWatchAd}
-          disabled={getRemainingAds() <= 0}
-          className={`ad-button game-pill-btn px-3 py-2 text-xs font-bold transition sm:text-sm ${
-            getRemainingAds() <= 0
-              ? 'cursor-not-allowed opacity-50 bg-gray-300'
-              : 'bg-gradient-to-r from-purple-400 to-pink-400 text-white hover:from-purple-500 hover:to-pink-500'
-          }`}
-        >
-          📺 看广告<br />
-          <span className="text-[10px]">
-            今日剩余广告：{getRemainingAds()}/3
-          </span>
-        </button>
-      </div>
 
       {/* 排行榜覆盖 */}
       <AnimatePresence>
