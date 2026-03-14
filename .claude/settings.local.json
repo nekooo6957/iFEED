@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npm run:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git tag:*)",
+      "Bash(git push:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://nekooo6957.github.io/iFEED/)"
     ]
   }
 }

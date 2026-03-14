@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FoodType, FOODS, ANIMALS, PlayerData, PetDailyData, ProvinceType } from '../types';
 import { EmptyPetScreen } from './EmptyPetScreen';
+import { RankingPanel } from './RankingPanel';
 import {
   getPlayerData,
   savePlayerData,
@@ -378,7 +379,7 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
           className="relative cursor-pointer"
           onClick={handleNameEdit}
         >
-          <div className="text-[120px] leading-none drop-shadow-2xl">
+          <div className="text-[80px] leading-none drop-shadow-2xl sm:text-[100px]">
             {pet.emoji}
           </div>
           <div className="mt-2 text-center">
@@ -428,87 +429,103 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
         </motion.div>
       </div>
 
-      {/* 弹弓投喂区域 - 底部中央 */}
+      {/* 底部投喂控制区 */}
       <div
         ref={gameAreaRef}
-        className="absolute bottom-0 left-0 right-0 z-[140] flex items-center justify-center pb-[calc(5rem+env(safe-area-inset-bottom))]"
+        className="absolute bottom-0 left-0 right-0 z-[140] pb-[env(safe-area-inset-bottom)]"
       >
-        {/* 食物选择器 */}
-        <div className="absolute bottom-32 left-4 z-[130]">
-          <div className="mb-2 text-sm font-bold text-[#3a2612]">选择食物</div>
-          <div className="flex gap-2">
-            {FOOD_TYPES.map((food) => (
-              <button
-                key={food}
-                onClick={() => setCurrentFood(food)}
-                className={`rounded-xl px-3 py-2 text-center transition ${
-                  currentFood === food
-                    ? 'bg-cyan-500 border-2 border-cyan-600 text-white'
-                    : 'bg-white/80 border-2 border-gray-300 hover:bg-white'
-                }`}
-              >
-                <div className="text-2xl">{FOODS[food].emoji}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 蓄力条 */}
-        {isCharging && (
-          <div className="absolute bottom-28 w-48 overflow-hidden rounded-full border-2 border-black/20 bg-gray-200">
-            <div
-              className="h-3 bg-gradient-to-r from-orange-400 to-red-400 transition-all duration-75"
-              style={{ width: `${chargePercent}%` }}
-            />
-          </div>
-        )}
-
-        {/* 弹弓按钮 */}
-        <button
-          ref={chargeButtonRef}
-          type="button"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          className="relative z-[150] mb-1 h-28 w-28 cursor-grab border-0 bg-transparent p-0 active:cursor-grabbing"
-          aria-label={`投喂 ${FOODS[currentFood].name}`}
-        >
-          <motion.div
-            className="absolute inset-0 flex items-center justify-center origin-bottom"
-            animate={{
-              x: isCharging ? dragOffset.x * 0.45 : 0,
-              y: isCharging ? dragOffset.y * 0.65 : 0,
-              rotate: isCharging ? (Math.atan2(dragOffset.x, -dragOffset.y) * 180 / Math.PI) : 0
-            }}
-            transition={{ type: 'spring', duration: 0.05 }}
-          >
-            {/* 复用 GameScreen 的 SVG hand */}
-            <svg width="90" height="90" viewBox="0 0 100 100" className="drop-shadow-xl">
-              <path
-                d="M30,100 L30,60 Q30,30 50,30 Q70,30 70,60 L70,100 Z"
-                fill="#FFCCAA"
-                stroke="black"
-                strokeWidth="3"
-              />
-              <path
-                d="M70,70 Q90,70 90,50 Q90,30 70,40"
-                fillOpacity="0"
-                stroke="black"
-                strokeWidth="3"
-              />
-              <path d="M40,30 L40,60" stroke="black" strokeWidth="2" opacity="0.3" />
-              <path d="M50,30 L50,60" stroke="black" strokeWidth="2" opacity="0.3" />
-              <path d="M60,30 L60,60" stroke="black" strokeWidth="2" opacity="0.3" />
-            </svg>
-
-            <div className="pointer-events-none absolute top-[35%] text-2xl">
-              {FOODS[currentFood].emoji}
+        {/* 底部控制面板 */}
+        <div className="flex items-end justify-between gap-3 px-4 pt-3 pb-4 sm:gap-4 sm:px-6 sm:pb-6">
+          {/* 左侧：食物选择器 */}
+          <div className="flex flex-col gap-2">
+            <div className="text-sm font-bold text-[#3a2612]">选择食物</div>
+            <div className="flex gap-2">
+              {FOOD_TYPES.map((food) => (
+                <button
+                  key={food}
+                  onClick={() => setCurrentFood(food)}
+                  className={`rounded-lg px-2 py-2 text-center transition sm:px-3 ${
+                    currentFood === food
+                      ? 'bg-cyan-500 border-2 border-cyan-600 text-white'
+                      : 'bg-white/90 border-2 border-gray-300 hover:bg-white'
+                  }`}
+                >
+                  <div className="text-xl sm:text-2xl">{FOODS[food].emoji}</div>
+                </button>
+              ))}
             </div>
-          </motion.div>
-        </button>
+          </div>
 
-        <div className="rounded-full bg-[#2a1d14]/85 px-2 py-1 text-[10px] font-bold text-white">
-          向下拖动蓄力投喂
+          {/* 中间：弹弓按钮 */}
+          <div className="flex flex-col items-center">
+            {/* 蓄力条 */}
+            {isCharging && (
+              <div className="mb-2 w-32 overflow-hidden rounded-full border border-black/20 bg-gray-200 sm:w-40">
+                <div
+                  className="h-2 bg-gradient-to-r from-orange-400 to-red-400 transition-all duration-75"
+                  style={{ width: `${chargePercent}%` }}
+                />
+              </div>
+            )}
+
+            {/* 弹弓按钮 */}
+            <button
+              ref={chargeButtonRef}
+              type="button"
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              className="relative mb-2 h-24 w-24 cursor-grab border-0 bg-transparent p-0 active:cursor-grabbing sm:h-28 sm:w-28"
+              aria-label={`投喂 ${FOODS[currentFood].name}`}
+            >
+              <motion.div
+                className="absolute inset-0 flex items-center justify-center origin-bottom"
+                animate={{
+                  x: isCharging ? dragOffset.x * 0.45 : 0,
+                  y: isCharging ? dragOffset.y * 0.65 : 0,
+                  rotate: isCharging ? (Math.atan2(dragOffset.x, -dragOffset.y) * 180 / Math.PI) : 0
+                }}
+                transition={{ type: 'spring', duration: 0.05 }}
+              >
+                <svg width="90" height="90" viewBox="0 0 100 100" className="drop-shadow-xl sm:h-[102px] sm:w-[102px]">
+                  <path
+                    d="M30,100 L30,60 Q30,30 50,30 Q70,30 70,60 L70,100 Z"
+                    fill="#FFCCAA"
+                    stroke="black"
+                    strokeWidth="3"
+                  />
+                  <path
+                    d="M70,70 Q90,70 90,50 Q90,30 70,40"
+                    fillOpacity="0"
+                    stroke="black"
+                    strokeWidth="3"
+                  />
+                  <path d="M40,30 L40,60" stroke="black" strokeWidth="2" opacity="0.3" />
+                  <path d="M50,30 L50,60" stroke="black" strokeWidth="2" opacity="0.3" />
+                  <path d="M60,30 L60,60" stroke="black" strokeWidth="2" opacity="0.3" />
+                </svg>
+
+                <div className="pointer-events-none absolute top-[40%] text-3xl sm:text-4xl">
+                  {FOODS[currentFood].emoji}
+                </div>
+              </motion.div>
+            </button>
+
+            <div className="rounded-full bg-[#2a1d14]/85 px-2 py-1 text-[10px] font-bold text-white sm:text-xs">
+              向下拖动蓄力投喂
+            </div>
+          </div>
+
+          {/* 右侧：占位符保持布局平衡 */}
+          <div className="flex flex-col gap-2">
+            <div className="h-5"></div>
+            <div className="text-xs text-gray-500 text-center">
+              <div>剩余投喂</div>
+              <div className="title-font text-lg font-bold text-[#3a2612]">
+                {getRemainingFeeds()}次
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -614,49 +631,12 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
             exit={{ opacity: 0 }}
             className="absolute inset-0 z-[300] flex items-center justify-center bg-black/50"
           >
-            <div className="relative w-full max-w-md">
-              <div className="rounded-2xl border-2 border-black/20 bg-white p-6">
-                <h3 className="title-font mb-4 text-center text-2xl font-bold text-[#3a2612]">
-                  🏆 排行榜 - {playerData.selectedProvince}
-                </h3>
-                <div className="space-y-2">
-                  {MOCK_RANKINGS.map((item) => (
-                    <div
-                      key={item.rank}
-                      className={`flex items-center justify-between rounded-lg px-4 py-3 ${
-                        playerData.chosenPet.customName === item.petName
-                          ? 'bg-gradient-to-r from-yellow-100 to-yellow-200 border-2 border-yellow-400'
-                          : 'bg-white border border-gray-200'
-                      }`}
-                    >
-                      <span className={`title-font text-xl font-bold ${
-                        item.rank <= 3 ? 'text-yellow-500' : 'text-gray-600'
-                      }`}>
-                        {item.rank}
-                      </span>
-                      <span className="flex-1 text-center font-bold text-[#3a2612]">
-                        {item.petName}
-                      </span>
-                      <span className="text-lg font-bold text-[#1e40af]">
-                        {item.strength}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 rounded-xl bg-gray-50 px-4 py-3 text-center">
-                  <div className="text-sm text-gray-600">你当前排名第</div>
-                  <div className="title-font text-xl font-bold text-[#3a2612]">
-                    第 15 名
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowRanking(false)}
-                  className="w-full mt-4 rounded-xl bg-gray-200 px-4 py-3 font-bold text-gray-700 hover:bg-gray-300"
-                >
-                  关闭
-                </button>
-              </div>
-            </div>
+            <RankingPanel
+              province={playerData.selectedProvince}
+              yourPetName={playerData.chosenPet.customName}
+              yourRank={15}
+              onClose={() => setShowRanking(false)}
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -689,17 +669,3 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
     </div>
   );
 }
-
-// 模拟排行榜数据
-const MOCK_RANKINGS = [
-  { rank: 1, petName: '巨壮青蛙', province: '广东', strength: 1500 },
-  { rank: 2, petName: '力量小狗', province: '江苏', strength: 1200 },
-  { rank: 3, petName: '肌肉小猫', province: '浙江', strength: 980 },
-  { rank: 4, petName: '铁臂乌龟', province: '山东', strength: 850 },
-  { rank: 5, petName: '霸气老虎', province: '四川', strength: 720 },
-  { rank: 6, petName: '结实小兔', province: '湖北', strength: 600 },
-  { rank: 7, petName: '强壮小羊', province: '湖南', strength: 480 },
-  { rank: 8, petName: '灵活小鱼', province: '福建', strength: 350 },
-  { rank: 9, petName: '萌萌小鸡', province: '安徽', strength: 200 },
-  { rank: 10, petName: '初生小牛', province: '河北', strength: 100 },
-];

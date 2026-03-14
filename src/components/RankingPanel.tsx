@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
+import React from 'react';
 
 export interface RankingData {
   rank: number;
@@ -11,6 +12,7 @@ interface RankingPanelProps {
   province: string;
   yourRank?: number;
   yourPetName?: string;
+  onClose?: () => void;
 }
 
 const MOCK_RANKINGS: RankingData[] = [
@@ -26,15 +28,21 @@ const MOCK_RANKINGS: RankingData[] = [
   { rank: 10, petName: '初生小牛', province: '河北', strength: 100 },
 ];
 
-export function RankingPanel({ province, yourRank, yourPetName }: RankingPanelProps) {
+export function RankingPanel({ province, yourRank, yourPetName, onClose }: RankingPanelProps) {
+  const handleClose = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClose?.();
+  };
+
   return (
-    <div className="absolute left-0 right-0 top-0 z-[150] max-h-[60vh] overflow-y-auto bg-white/95 backdrop-blur-sm">
-      <div className="p-4">
+    <div className="absolute left-0 right-0 top-0 z-[150] max-h-[60vh] overflow-y-auto bg-white/95 backdrop-blur-sm" onClick={onClose}>
+      <div className="p-4" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h3 className="title-font text-xl font-bold text-[#3a2612]">
             🏆 排行榜 - {province}
           </h3>
           <button
+            onClick={handleClose}
             className="rounded-full bg-gray-200 px-3 py-1 text-sm font-bold text-gray-600 hover:bg-gray-300"
           >
             关闭
