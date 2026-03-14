@@ -85,7 +85,7 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
     }
   }, []);
 
-  // 处理飞行动画结束
+  // 处理飞行动画结束（直接命中宠物）
   useEffect(() => {
     flyingFoods.forEach((food) => {
       const foodId = food.id;
@@ -230,24 +230,18 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
     const spawnPxX = startPosRef.current.x;
     const spawnPxY = startPosRef.current.y;
 
-    // 使用与 GameScreen 相同的计算逻辑
-    const chargeRatio = Math.min(Math.max(dragOffset.y / maxDragDistance, 0), 1);
-    const stableDx = Math.abs(dragOffset.x) <= xDeadZonePx ? 0 : dragOffset.x;
-    const weightedDx = stableDx * chargeRatio;
-    const throwVecX = -weightedDx * forceMultiplierX;
-    const throwVecY = -dragOffset.y * forceMultiplierY;
-
-    const targetPxX = spawnPxX + throwVecX;
-    const targetPxY = spawnPxY + throwVecY;
+    // 宠物在屏幕中间偏上位置，目标设置为宠物附近
+    // 宠物位置：top-[35%] = bottom-[35%]
+    const targetBottomPct = 35 + (Math.random() * 15 - 7); // 35-50% 之间的随机位置，带一点横向偏移
 
     const newFood: FlyingFood = {
       id: `food_${Date.now()}_${Math.random().toString(36).slice(2)}`,
       type: currentFood,
-      startX: (spawnPxX / gameRect.width) * 100,
-      startY: ((gameRect.height - spawnPxY) / gameRect.height) * 100,
-      targetX: (targetPxX / gameRect.width) * 100,
-      targetY: ((gameRect.height - targetPxY) / gameRect.height) * 100,
-      duration: 0.8,
+      startX: 50, // 从屏幕中心开始
+      startY: 55, // 从屏幕上方开始
+      targetX: 50 + (Math.random() * 30 - 15), // 宠物附近的随机目标位置
+      targetY: targetBottomPct,
+      duration: 0.6, // 飞行时间稍短
       charge: Math.min((dragOffset.y / maxDragDistance) * 100, 100)
     };
 
@@ -346,16 +340,15 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
         )}
 
         {/* 进化进度条 */}
-        <div className="mt-2 w-[80%] max-w-xs">
-          <div className="mb-1 text-xs text-gray-600">形态进化</div>
-          <div className="h-3 overflow-hidden rounded-full border-2 border-black/10 bg-gray-100">
+        <div className="mt-2 flex flex-col items-center gap-1">
+          <div className="text-xs text-gray-600 whitespace-nowrap">
+            {playerData.chosenPet.strength % 1000}/1000 → {formName}
+          </div>
+          <div className="h-3 overflow-hidden rounded-full border-2 border-black/10 bg-gray-100 w-[80%]">
             <div
               className="h-full bg-gradient-to-r from-blue-400 to-cyan-400 transition-all duration-500"
               style={{ width: `${Math.min(100, (playerData.chosenPet.strength % 1000) / 10)}%` }}
             />
-          </div>
-          <div className="mt-1 text-center text-xs text-gray-600">
-            {playerData.chosenPet.strength % 1000}/1000 → {formName}
           </div>
         </div>
 
