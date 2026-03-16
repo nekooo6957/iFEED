@@ -85,6 +85,17 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
     }
   }, []);
 
+  // 确保当前选中的食物是天选动物能吃的
+  useEffect(() => {
+    if (!playerData?.chosenPet) return;
+    const petConfig = ANIMALS[playerData.chosenPet.animalType];
+    const edibleFoods = Object.keys(petConfig.foodEffects) as FoodType[];
+    // 如果当前选中的食物不能吃，自动切换到能吃的第一个
+    if (edibleFoods.length > 0 && !edibleFoods.includes(currentFood)) {
+      setCurrentFood(edibleFoods[0]);
+    }
+  }, [playerData?.chosenPet?.animalType]);
+
   // 处理飞行动画结束（检测是否命中宠物）
   useEffect(() => {
     flyingFoods.forEach((food) => {
@@ -93,21 +104,41 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
       processedFoodIdsRef.current.add(foodId);
 
       setTimeout(() => {
-        // 检测是否命中宠物（宠物在屏幕中央，bottom 约 65%）
-        const petX = 50; // 宠物在屏幕中央
-        const petY = 65; // 宠物在 top-[35%] = bottom-[65%]
-        const hitRadius = 15; // 命中半径
+        // 命中检测逻辑 - 完全同步 GameScreen 的 checkCollision
+        const gameRect = gameAreaRef.current?.getBoundingClientRect();
+        if (!gameRect) {
+          showFeedbackFeed('未命中', food.targetX, food.targetY);
+          return;
+        }
 
-        const dx = food.targetX - petX;
-        const dy = food.targetY - petY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const aspectRatio = gameRect.height / gameRect.width;
 
-        if (distance <= hitRadius) {
+        // 宠物位置：容器顶部在 top-[35%]，但 emoji 实际中心在容器内偏下
+        // 考虑 emoji 大小(80-100px)和下方文字，视觉中心约在 bottom-[58%]
+        const petX = 50;
+        const petY = 58;
+
+        // 命中半径常量（与 GameScreen 一致）
+        const baseHitRadiusPct = 9.8;  // 动物基础命中半径
+        const foodHitRadiusPct = 2.5;  // 食物命中半径
+        // 宠物养成模式：需要更精准的命中，使用较小的 hitScale
+        // 让 9.8% * 0.75 + 2.5% * 0.75 ≈ 9.2% 的总命中半径
+        const hitScale = 0.75;
+        const effectiveHitRadius = baseHitRadiusPct * hitScale;
+        const effectiveFoodRadius = foodHitRadiusPct * hitScale;
+
+        // 计算距离（使用 aspect ratio 修正 Y 轴，与 GameScreen 一致）
+        const dx = petX - food.targetX;
+        const dy = (petY - food.targetY) * aspectRatio;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // 命中判定：距离小于两个半径之和
+        if (dist < effectiveHitRadius + effectiveFoodRadius) {
           handleFeedingSuccess();
-        } else if (food.targetY > 80) {
-          showFeedbackFeed('飞过头了', food.targetX, food.targetY);
-        } else if (food.targetY < 50) {
-          showFeedbackFeed('太近了', food.targetX, food.targetY);
+        } else if (food.targetY < 35) {
+          showFeedbackFeed('落在前方太近', food.targetX, food.targetY);
+        } else if (food.targetY > 90) {
+          showFeedbackFeed('飞过头顶', food.targetX, food.targetY);
         } else {
           showFeedbackFeed('未命中', food.targetX, food.targetY);
         }
@@ -146,7 +177,9 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
   // 计算瞄准角度（复用 GameScreen 逻辑）
   const aimAngleDeg = (() => {
     if (!isCharging) return 0;
-    const chargeRatio = Math.min(Math.max(dragOffset.y / maxDragDistance, 0), 1);
+    // 使用平方曲线让蓄力前期更平缓
+    const rawRatio = Math.min(Math.max(dragOffset.y / maxDragDistance, 0), 1);
+    const chargeRatio = rawRatio * rawRatio;
     const stableDx = Math.abs(dragOffset.x) <= xDeadZonePx ? 0 : dragOffset.x;
     const weightedDx = stableDx * chargeRatio;
     const throwVecX = -weightedDx * forceMultiplierX;
@@ -226,7 +259,9 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
     const dy = Math.max(0, currentY - startPosRef.current.y);
     setDragOffset({ x: dx, y: dy });
 
-    const percent = Math.min((dy / maxDragDistance) * 100, 100);
+    // 使用平方曲线让蓄力前期更平缓：下拉50%距离时只获得25%蓄力
+    const normalizedDistance = Math.min(dy / maxDragDistance, 1);
+    const percent = Math.min(normalizedDistance * normalizedDistance * 100, 100);
     setChargePercent(percent);
   };
 
@@ -249,28 +284,23 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
     const spawnPxY = startPosRef.current.y;
 
     // 计算抛投向量（与 GameScreen 相同的逻辑）
-    const chargeRatio = Math.min(Math.max(dragOffset.y / maxDragDistance, 0), 1);
+    // 使用平方曲线让蓄力前期更平缓
+    const rawRatio = Math.min(Math.max(dragOffset.y / maxDragDistance, 0), 1);
+    const chargeRatio = rawRatio * rawRatio;
     const stableDx = Math.abs(dragOffset.x) <= xDeadZonePx ? 0 : dragOffset.x;
     const weightedDx = stableDx * chargeRatio;
     const throwVecX = -weightedDx * forceMultiplierX;
     const throwVecY = -dragOffset.y * forceMultiplierY;
 
-    // 起点：手的当前位置（包括拖拽偏移）
-    // 手的视觉位置 = 按钮中心 + 偏移 * 系数
-    const handX = spawnPxX + dragOffset.x * 0.45;
-    const handY = spawnPxY + dragOffset.y * 0.65;
-    const startXPct = (handX / gameRect.width) * 100;
-    const startYPct = ((gameRect.height - handY) / gameRect.height) * 100;
+    // 起点：使用固定发射点（与 GameScreen 一致，避免双重偏移导致歪斜）
+    const startXPct = (spawnPxX / gameRect.width) * 100;
+    const startYPct = ((gameRect.height - spawnPxY) / gameRect.height) * 100;
 
-    // 终点：根据抛投向量计算，但限制在合理范围内
+    // 终点：根据抛投向量计算（与 GameScreen 完全一致，不限制范围）
     const targetPxX = spawnPxX + throwVecX;
     const targetPxY = spawnPxY + throwVecY;
-    let targetXPct = (targetPxX / gameRect.width) * 100;
-    let targetYPct = ((gameRect.height - targetPxY) / gameRect.height) * 100;
-
-    // 限制目标位置在屏幕范围内（宠物区域：X 20-80%，Y 50-75%）
-    targetXPct = Math.max(20, Math.min(80, targetXPct));
-    targetYPct = Math.max(50, Math.min(75, targetYPct));
+    const targetXPct = (targetPxX / gameRect.width) * 100;
+    const targetYPct = ((gameRect.height - targetPxY) / gameRect.height) * 100;
 
     const newFood: FlyingFood = {
       id: `food_${Date.now()}_${Math.random().toString(36).slice(2)}`,
@@ -345,7 +375,7 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
   };
 
   return (
-    <div className="relative h-full w-full bg-gradient-to-b from-[#f8efdc] via-[#f4e5c8] to-[#ecd8b5]">
+    <div ref={gameAreaRef} className="relative h-full w-full bg-gradient-to-b from-[#f8efdc] via-[#f4e5c8] to-[#ecd8b5]">
       {/* 顶部导航 */}
       <div className="absolute left-0 right-0 top-0 z-[50] flex items-start justify-between gap-2 px-3 pb-2 pt-[calc(0.6rem+env(safe-area-inset-top))]">
         <button
@@ -459,26 +489,32 @@ export function PetRaisingScreen({ onBack, onGoToAdventure }: PetRaisingScreenPr
 
       {/* 底部控制区 - 完全复用 GameScreen 布局 */}
       <div
-        ref={gameAreaRef}
         className="absolute bottom-[calc(5rem+env(safe-area-inset-bottom))] left-0 right-0 z-[120] grid grid-cols-[1.05fr_auto_0.95fr] items-end gap-2 px-2 sm:bottom-12 sm:gap-3 sm:px-4"
       >
-        {/* 左侧：食物选择器 */}
+        {/* 左侧：食物选择器 - 只显示天选动物能吃的食物 */}
         <div className="p-1.5 sm:p-2">
           <div className="mb-2 text-sm font-black">食物库存</div>
           <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
             {FOOD_TYPES.map((food) => {
               const isSelected = currentFood === food;
+              // 检查天选动物是否能吃这种食物
+              const canEat = pet.foodEffects[food] !== undefined;
               return (
                 <button
                   key={food}
                   type="button"
-                  onClick={() => setCurrentFood(food)}
-                  aria-label={`${FOODS[food].name}，选中${isSelected ? '是' : '否'}`}
+                  onClick={() => canEat && setCurrentFood(food)}
+                  disabled={!canEat}
+                  aria-label={`${FOODS[food].name}${canEat ? '' : '（不能吃）'}，选中${isSelected ? '是' : '否'}`}
                   className={`min-h-[54px] rounded-xl border px-1 py-1 text-center transition sm:min-h-[60px] sm:px-2 sm:py-2 ${
-                    isSelected ? 'border-cyan-500 bg-cyan-50 shadow-[0_4px_12px_rgba(14,165,233,0.28)]' : 'border-black/15 bg-white/90'
+                    !canEat
+                      ? 'cursor-not-allowed border-gray-200 bg-gray-100 opacity-40'
+                      : isSelected
+                        ? 'border-cyan-500 bg-cyan-50 shadow-[0_4px_12px_rgba(14,165,233,0.28)]'
+                        : 'border-black/15 bg-white/90 hover:bg-white'
                   }`}
                 >
-                  <div className="text-xl sm:text-2xl">{FOODS[food].emoji}</div>
+                  <div className={`text-xl sm:text-2xl ${!canEat ? 'grayscale' : ''}`}>{FOODS[food].emoji}</div>
                 </button>
               );
             })}

@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-iFEED is a 2D pseudo-3D casual feeding game built with React, Vite, and TypeScript. Players throw food at animals arranged in grid formations by pulling down on a slingshot-style button. The game features 4 levels with increasing complexity (1x1, 3 animals in a line, 3x3, 4x4).
+iFEED is a 2D pseudo-3D casual feeding game built with React, Vite, and TypeScript. Players throw food at animals arranged in grid formations by pulling down on a slingshot-style button.
+
+Two game modes:
+- **Adventure Mode**: 4 levels with increasing complexity (1x1 → 1x3 → 3x3 → 4x4)
+- **Pet Raising Mode**: Daily feeding of a chosen pet with progress tracking
 
 ## Common Commands
 
@@ -22,14 +26,17 @@ npm run lint            # Run TypeScript type check (noEmit)
 
 Copy `.env.example` to `.env.local` and set:
 - `GEMINI_API_KEY` - Required for Gemini AI API calls
+- `VITE_BASE_PATH` - Optional override for deployment base path (defaults to `/iFEED/` in production)
+- `DISABLE_HMR` - Set to `true` in AI Studio to disable hot module replacement
 
 ## Architecture
 
 ### Phase-Based State Machine
 
-The app flows through three main phases managed in `App.tsx`:
-- **welcome**: Player selects region and gender (`WelcomeScreen`)
-- **playing**: Main game loop (`GameScreen`)
+The app flows through four phases managed in `App.tsx`:
+- **welcome**: Player selects region and gender, chooses game mode (`WelcomeScreen`)
+- **playing_adventure**: Main game loop - feed grid of animals (`GameScreen`)
+- **playing_raising**: Pet raising mode - feed chosen pet daily (`PetRaisingScreen`)
 - **result**: Win/lose screen with stats (`ResultScreen`)
 
 ### Game Loop (GameScreen.tsx)
@@ -81,11 +88,40 @@ Core game data structures:
 - `AnimalStatus`: hungry, sick, full
 - `AnimalConfig`: Maps animals to food effects (value 1 or 2)
 - `LEVEL_CONFIG`: Array of level definitions with `MAX_LEVEL = 4`
+- `PlayerData`: Player ID, selected province, chosen pet (strength, feed count)
+- `PetDailyData`: Date, check-in status, daily feed count, ad count
+- `ProvinceType`: 24 provinces for region selection
+
+### Storage Layer (utils/storage.ts)
+
+LocalStorage-based persistence for pet raising features:
+- **Player Data**: `PLAYER_KEY` stores chosen pet, custom name, strength, feed count
+- **Daily Data**: `DAILY_KEY` tracks check-ins, daily feeds (3), ad usage (max 3/day)
+- **Test Mode**: `getRemainingFeeds()` returns 100 when count is 0 (debug convenience)
+- **Date Tracking**: `isNewDay()` resets daily data automatically at midnight
+
+### Pet Raising System (PetRaisingScreen.tsx)
+
+Daily engagement features:
+- Check-in system with 3 daily feeds
+- Ad-supported feed extensions (up to 3 ads/day = +3 feeds)
+- Strength growth tracking per animal type
+- Province-based rankings (simulated for demo)
+- Evolution progress visual (test mode: 1 feed = 100% progress for testing)
 
 ## Development Notes
 
 ### Tailwind CSS v4
 Using `@tailwindcss/vite` plugin - styles defined in `src/index.css` with custom CSS variables for game colors.
+
+### Custom Fonts
+Three Google Fonts imported in `src/index.css`:
+- **Baloo 2** (600/700/800): Primary body font
+- **Luckiest Guy**: Title/headline font (`.title-font` class)
+- **Noto Sans SC** (500/700/900): Chinese characters fallback
+
+### Path Aliases
+`tsconfig.json` defines `@/*` → project root. Use `@/components/...` for imports.
 
 ### Motion Library
 Uses `motion/react` (Framer Motion) for:
@@ -110,3 +146,9 @@ Game uses Pointer Events API for unified touch/mouse handling on the slingshot b
 - Check `processedFoodIdsRef` for collision timing issues
 - Visual scale multiplier adjusts emoji sizes based on screen width
 - Hit radius ~9.8% of screen width varies by level
+
+### Test Mode
+PetRaisingScreen has a hidden test mode for development:
+- 1 feed instantly completes evolution progress bar
+- `getRemainingFeeds()` returns 100 when daily count is 0
+- No ads needed for testing

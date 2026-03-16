@@ -16,6 +16,7 @@ export interface FoodItem {
   name: string;
   emoji: string;
   color: string;
+  image: string;
 }
 
 export interface AnimalConfig {
@@ -63,13 +64,21 @@ export const REGIONS = [
   '西北牧场',
 ];
 
+// 导入食物图片
+import carrotImage from './assets/foods/胡萝卜.png';
+import bugImage from './assets/foods/虫子.png';
+import boneImage from './assets/foods/骨头.png';
+import greensImage from './assets/foods/青菜.png';
+import shrimpImage from './assets/foods/虾.png';
+import feedImage from './assets/foods/饲料.png';
+
 export const FOODS: Record<FoodType, FoodItem> = {
-  carrot: { type: 'carrot', name: '胡萝卜', emoji: '🥕', color: 'bg-orange-400' },
-  bug: { type: 'bug', name: '虫子', emoji: '🐛', color: 'bg-lime-600' },
-  bone: { type: 'bone', name: '肉骨头', emoji: '🦴', color: 'bg-stone-300' },
-  greens: { type: 'greens', name: '青菜', emoji: '🥬', color: 'bg-green-500' },
-  shrimp: { type: 'shrimp', name: '虾', emoji: '🦐', color: 'bg-red-400' },
-  feed: { type: 'feed', name: '饲料', emoji: '🫘', color: 'bg-yellow-500' },
+  carrot: { type: 'carrot', name: '胡萝卜', emoji: '🥕', color: 'bg-orange-400', image: carrotImage },
+  bug: { type: 'bug', name: '虫子', emoji: '🐛', color: 'bg-lime-600', image: bugImage },
+  bone: { type: 'bone', name: '肉骨头', emoji: '🦴', color: 'bg-stone-300', image: boneImage },
+  greens: { type: 'greens', name: '青菜', emoji: '🥬', color: 'bg-green-500', image: greensImage },
+  shrimp: { type: 'shrimp', name: '虾', emoji: '🦐', color: 'bg-red-400', image: shrimpImage },
+  feed: { type: 'feed', name: '饲料', emoji: '🫘', color: 'bg-yellow-500', image: feedImage },
 };
 
 export const ANIMALS: Record<AnimalType, AnimalConfig> = {

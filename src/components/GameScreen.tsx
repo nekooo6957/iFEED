@@ -17,8 +17,37 @@ import {
 } from '../logic/levelGenerator';
 import { getPlayerData, updateAnimalFeedCount, setChosenPet } from '../utils/storage';
 
+// 导入背景图片
+const backgroundImageUrl = new URL('/src/assets/游戏场地.png', import.meta.url).href;
+
+// 导入饥饿值图标和气泡图片
+import hungerValue1Image from '../assets/饥饿值1.png';
+import hungerValue2Image from '../assets/饥饿值2.png';
+import hungerValue3Image from '../assets/饥饿值3.png';
+import bubbleImage from '../assets/气泡.png';
+// 导入道具按钮图片
+import cureButtonImage from '../assets/救治针.png';
+import biscuitButtonImage from '../assets/万能饼干.png';
+import switchButtonImage from '../assets/切换按钮.png';
+// 导入食物库背景图片
+import foodInventoryBgImage from '../assets/食物库背景.png';
+
 const random = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const uid = () => Math.random().toString(36).slice(2, 11);
+
+// 根据饥饿值获取对应的图片
+const getHungerImage = (hungerValue: number): string => {
+  switch (hungerValue) {
+    case 1:
+      return hungerValue1Image;
+    case 2:
+      return hungerValue2Image;
+    case 3:
+      return hungerValue3Image;
+    default:
+      return hungerValue1Image;
+  }
+};
 
 const getHitScaleByY = (level: number, globalScale: number) => {
   if (level === 4) return 1.2 * globalScale;
@@ -91,7 +120,6 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
   const forceMultiplierY = 4.8;
 
   const levelConfig = getLevelConfig(level);
-  const unlockedFoods = levelConfig.unlockedFoods;
 
   const remainingHunger = useMemo(
     () => animals.reduce((sum, animal) => sum + Math.max(0, animal.hungerCurrent), 0),
@@ -212,7 +240,7 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
     const inventory = generateSolvableInventory(newAnimals, config);
     const hungerTotal = newAnimals.reduce((sum, animal) => sum + animal.hungerCurrent, 0);
     const firstAvailable =
-      config.unlockedFoods.find((food) => inventory[food] > 0) ?? config.unlockedFoods[0];
+      ALL_FOODS.find((food) => inventory[food] > 0) ?? ALL_FOODS[0];
 
     setAnimals(newAnimals);
     setFoodInventory(inventory);
@@ -274,11 +302,11 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
 
   useEffect(() => {
     if (foodInventory[currentFood] > 0) return;
-    const nextAvailable = unlockedFoods.find((food) => foodInventory[food] > 0);
+    const nextAvailable = ALL_FOODS.find((food) => foodInventory[food] > 0);
     if (nextAvailable) {
       setCurrentFood(nextAvailable);
     }
-  }, [currentFood, foodInventory, unlockedFoods]);
+  }, [currentFood, foodInventory]);
 
   useEffect(() => {
     if (levelTransitioningRef.current || gameEndedRef.current) return;
@@ -332,9 +360,11 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
   };
 
   const getThrowVector = (dx: number, dy: number) => {
-    const chargeRatio = Math.min(Math.max(dy / maxDragDistance, 0), 1);
+    // 使用平方曲线让蓄力前期更平缓
+    const rawRatio = Math.min(Math.max(dy / maxDragDistance, 0), 1);
+    const chargeRatio = rawRatio * rawRatio;
     const stableDx = Math.abs(dx) <= xDeadZonePx ? 0 : dx;
-    // 轻拉时横向影响更小，避免“方向对但明显偏斜”
+    // 轻拉时横向影响更小，避免”方向对但明显偏斜”
     const weightedDx = stableDx * chargeRatio;
     return {
       throwVecX: -weightedDx * forceMultiplierX,
@@ -383,7 +413,9 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
     const dy = Math.max(0, currentY - startPosRef.current.y);
     setDragOffset({ x: dx, y: dy });
 
-    const percent = Math.min((dy / maxDragDistance) * 100, 100);
+    // 使用平方曲线让蓄力前期更平缓：下拉50%距离时只获得25%蓄力
+    const normalizedDistance = Math.min(dy / maxDragDistance, 1);
+    const percent = Math.min(normalizedDistance * normalizedDistance * 100, 100);
     setChargePercent(percent);
   };
 
@@ -432,7 +464,7 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
     });
 
     if (nextInventory[foodType] <= 0) {
-      const nextAvailable = unlockedFoods.find((food) => nextInventory[food] > 0);
+      const nextAvailable = ALL_FOODS.find((food) => nextInventory[food] > 0);
       if (nextAvailable) {
         setCurrentFood(nextAvailable);
       }
@@ -576,6 +608,27 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
     showFeedback(tool === 'cure' ? '已选择救治针' : '已选择万能饼干', 50, 22);
   };
 
+  const switchFood = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // 检查有库存的食物种类数量
+    const availableFoods = ALL_FOODS.filter((food) => foodInventory[food] > 0);
+
+    // 如果只有一种或没有食物，显示提示
+    if (availableFoods.length <= 1) {
+      showFeedback('没别的了', 50, 22);
+      return;
+    }
+
+    // 切换到下一个有库存的食物
+    const currentIndex = availableFoods.indexOf(currentFood);
+    const nextIndex = (currentIndex + 1) % availableFoods.length;
+    const nextFood = availableFoods[nextIndex];
+    setCurrentFood(nextFood);
+    showFeedback(`已切换为${FOODS[nextFood].name}`, 50, 22);
+  };
+
   const handleAnimalClick = (animal: AnimalEntity) => {
     setSelectedAnimalId(animal.id);
 
@@ -620,7 +673,13 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
   return (
     <div
       ref={gameAreaRef}
-      className="relative h-full w-full select-none overflow-hidden touch-none bg-gradient-to-b from-[#f8efdc] via-[#f4e5c8] to-[#ecd8b5] pb-[env(safe-area-inset-bottom)]"
+      className="relative h-full w-full select-none overflow-hidden touch-none pb-[env(safe-area-inset-bottom)]"
+      style={{
+        backgroundImage: `url(${backgroundImageUrl})`,
+        backgroundSize: '100% 100%',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
     >
       <div className="pointer-events-none absolute left-0 right-0 top-0 z-50 flex items-start justify-between gap-2 px-3 pb-2 pt-[calc(0.6rem+env(safe-area-inset-top))] sm:px-4">
         <div className="min-w-0 flex-1 px-1 py-1 font-bold sm:px-2">
@@ -673,30 +732,50 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
           >
             <div className="relative flex flex-col items-center">
               <div
-                className={`absolute -top-5 -right-5 h-7 min-w-7 rounded-full border px-2 text-xs font-black shadow-[0_4px_10px_rgba(0,0,0,0.15)] ${
-                  animal.status === 'full'
-                    ? 'border-green-700 bg-green-200 text-green-900'
-                    : animal.status === 'sick'
-                      ? 'border-rose-700 bg-rose-200 text-rose-900'
-                      : 'border-black/30 bg-yellow-200 text-black'
+                className={`absolute -top-2 -right-0 h-[14px] w-[14px] flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.15)] ${
+                  animal.status === 'full' || animal.status === 'sick' ? 'hidden' : ''
                 }`}
               >
-                {animal.status === 'full' ? '饱' : animal.hungerCurrent}
+                <img
+                  src={getHungerImage(animal.hungerCurrent)}
+                  alt="饥饿值"
+                  className="h-full w-full object-contain"
+                />
               </div>
-
+              {animal.status === 'full' && (
+                <div
+                  className="absolute -top-2 -right-0 h-[14px] min-w-[14px] rounded-full border px-1 text-xs font-black shadow-[0_4px_10px_rgba(0,0,0,0.15)] border-green-700 bg-green-200 text-green-900 leading-none"
+                >
+                  饱
+                </div>
+              )}
               {animal.status === 'sick' && (
-                <div className="absolute -top-8 rounded-full border border-rose-700 bg-rose-100 px-2 text-xs font-bold text-rose-700">
-                  生病
+                <div
+                  className="absolute -top-2 -right-0 h-[14px] min-w-[14px] rounded-full border px-1 text-xs font-black shadow-[0_4px_10px_rgba(0,0,0,0.15)] border-rose-700 bg-rose-200 text-rose-900 leading-none"
+                >
+                  🤒
                 </div>
               )}
 
               {canEatCurrentFood && (
                 <div
-                  className={`absolute -top-10 left-1/2 -translate-x-1/2 rounded-full border border-black/20 bg-white/95 px-1.5 text-sm shadow ${
+                  className={`absolute -top-5 left-1/2 -translate-x-1/2 flex items-center justify-center shadow ${
                     animal.status === 'sick' ? 'opacity-45' : 'opacity-100'
                   }`}
+                  style={{
+                    backgroundImage: `url(${bubbleImage})`,
+                    backgroundSize: 'contain',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center',
+                    width: '26px',
+                    height: '24px',
+                  }}
                 >
-                  {FOODS[currentFood].emoji}
+                  <img
+                    src={FOODS[currentFood].image}
+                    alt={FOODS[currentFood].name}
+                    className="h-4 w-4 object-contain"
+                  />
                 </div>
               )}
 
@@ -764,10 +843,14 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
                 scale: { duration: food.duration, ease: 'easeInOut', times: [0, 0.5, 1] },
                 rotate: { duration: food.duration, ease: 'linear' },
               }}
-              className="absolute flex h-12 w-12 items-center justify-center text-4xl"
+              className="absolute flex h-12 w-12 items-center justify-center"
               style={{ transform: 'translate(-50%, 50%)' }}
             >
-              {FOODS[food.type].emoji}
+              <img
+                src={FOODS[food.type].image}
+                alt={FOODS[food.type].name}
+                className="h-10 w-10 object-contain"
+              />
             </motion.div>
                 </>
               );
@@ -792,32 +875,45 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
         )}
       </AnimatePresence>
 
-      <div className="absolute bottom-[calc(5rem+env(safe-area-inset-bottom))] left-0 right-0 z-[120] grid grid-cols-[1.05fr_auto_0.95fr] items-end gap-2 px-2 pt-3 sm:bottom-12 sm:gap-3 sm:px-4">
-        <div className="p-1.5 sm:p-2">
-          <div className="mb-2 text-sm font-black">食物库存</div>
-          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-            {unlockedFoods.map((food) => {
-              const isSelected = currentFood === food;
-              const count = foodInventory[food];
-              return (
-                <button
-                  key={food}
-                  type="button"
-                  onClick={() => setCurrentFood(food)}
-                  aria-label={`${FOODS[food].name}，剩余${count}`}
-                  className={`min-h-[54px] rounded-xl border px-1 py-1 text-center transition sm:min-h-[60px] sm:px-2 sm:py-2 ${
-                    isSelected ? 'border-cyan-500 bg-cyan-50 shadow-[0_4px_12px_rgba(14,165,233,0.28)]' : 'border-black/15 bg-white/90'
-                  } ${count <= 0 ? 'opacity-40 grayscale-[0.2]' : ''}`}
-                >
-                  <div className="text-xl sm:text-2xl">{FOODS[food].emoji}</div>
-                  <div className="text-xs font-bold">{count}</div>
-                </button>
-              );
-            })}
+      <div className="pointer-events-auto absolute bottom-[calc(5rem+env(safe-area-inset-bottom))] left-0 right-0 z-[120] grid grid-cols-[1.05fr_auto_0.95fr] items-end gap-2 px-2 pt-3 sm:bottom-12 sm:gap-3 sm:px-4">
+        <div className="pointer-events-auto p-1.5 sm:p-2 flex items-end">
+          <div
+            className="w-full flex flex-col items-center"
+            style={{
+              backgroundImage: `url(${foodInventoryBgImage})`,
+              backgroundSize: '100% 100%',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center',
+              aspectRatio: '254/204',
+              padding: '12px 10px 10px 10px',
+              transform: 'scale(0.9)',
+              marginLeft: '1px',
+            }}
+          >
+            <div className="flex justify-center w-full" style={{ paddingTop: '9px' }}>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-0">
+                {ALL_FOODS.map((food) => {
+                  const count = foodInventory[food];
+                  return (
+                    <div
+                      key={food}
+                      className={`flex items-center gap-1 px-1 py-0 bg-transparent ${count <= 0 ? 'opacity-40 grayscale-[0.2]' : ''}`}
+                    >
+                      <img
+                        src={FOODS[food].image}
+                        alt={FOODS[food].name}
+                        className="h-6 w-6 object-contain sm:h-7 sm:w-7"
+                      />
+                      <span className="text-xs font-black text-[#2a1d14]">X{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-2 px-1 py-1.5">
+        <div className="pointer-events-auto flex flex-col items-center gap-2 px-1 py-1.5">
           {isCharging && (
             <div className="w-28 overflow-hidden rounded-full border border-black bg-gray-200">
               <div className="h-2 bg-orange-500" style={{ width: `${chargePercent}%` }} />
@@ -859,8 +955,12 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
                 <path d="M60,30 L60,60" stroke="black" strokeWidth="2" opacity="0.3" />
               </svg>
 
-              <div className="pointer-events-none absolute top-[40%] text-3xl sm:text-4xl">
-                {FOODS[currentFood].emoji}
+              <div className="pointer-events-none absolute top-[40%] flex items-center justify-center">
+                <img
+                  src={FOODS[currentFood].image}
+                  alt={FOODS[currentFood].name}
+                  className="h-10 w-10 sm:h-12 sm:w-12 object-contain"
+                />
               </div>
 
               {isCharging && (Math.abs(dragOffset.x) > 5 || Math.abs(dragOffset.y) > 5) && (
@@ -875,34 +975,49 @@ export function GameScreen({ onGameOver, onWin }: GameScreenProps) {
           </div>
         </div>
 
-        <div className="p-1.5 sm:p-2">
-          <div className="mb-2 text-sm font-black">道具</div>
-          <div className="space-y-2">
+        <div className="pointer-events-auto pb-1.5 sm:pb-2 flex flex-col justify-end" style={{ transform: 'translate(15px, 30px)' }}>
+          <div className="space-y-0">
             <button
               type="button"
               onClick={() => armTool('cure')}
               aria-label="选择救治针"
-              className={`game-pill-btn w-full px-2.5 py-2 text-xs font-bold transition sm:px-3 sm:text-sm ${
-                pendingTool === 'cure'
-                  ? 'border-cyan-500 bg-cyan-100'
-                  : 'border-black/20 bg-white/90 hover:bg-white'
+              className={`touch-auto w-full bg-transparent py-0.5 px-1 transition sm:py-1 sm:px-1.5 ${
+                pendingTool === 'cure' ? 'opacity-100' : 'opacity-80 hover:opacity-100'
               } ${adUsedThisLevel ? 'cursor-not-allowed opacity-50' : ''}`}
               disabled={adUsedThisLevel}
             >
-              💉 救治针
+              <img
+                src={cureButtonImage}
+                alt="救治针"
+                className="mx-auto h-10 w-10 object-contain sm:h-12 sm:w-12 pointer-events-none"
+              />
             </button>
             <button
               type="button"
               onClick={() => armTool('biscuit')}
               aria-label="选择万能饼干"
-              className={`game-pill-btn w-full px-2.5 py-2 text-xs font-bold transition sm:px-3 sm:text-sm ${
-                pendingTool === 'biscuit'
-                  ? 'border-cyan-500 bg-cyan-100'
-                  : 'border-black/20 bg-white/90 hover:bg-white'
+              className={`touch-auto w-full bg-transparent py-0.5 px-1 transition sm:py-1 sm:px-1.5 ${
+                pendingTool === 'biscuit' ? 'opacity-100' : 'opacity-80 hover:opacity-100'
               } ${adUsedThisLevel ? 'cursor-not-allowed opacity-50' : ''}`}
               disabled={adUsedThisLevel}
             >
-              🍪 万能饼干
+              <img
+                src={biscuitButtonImage}
+                alt="万能饼干"
+                className="mx-auto h-10 w-10 object-contain sm:h-12 sm:w-12 pointer-events-none"
+              />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => switchFood(e)}
+              aria-label="切换食物"
+              className="touch-auto w-full bg-transparent py-0.5 px-1 transition opacity-80 hover:opacity-100 sm:py-1 sm:px-1.5"
+            >
+              <img
+                src={switchButtonImage}
+                alt="切换食物"
+                className="mx-auto h-10 w-10 object-contain sm:h-12 sm:w-12 pointer-events-none"
+              />
             </button>
           </div>
         </div>
